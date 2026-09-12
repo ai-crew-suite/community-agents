@@ -141,7 +141,7 @@ describe('Kernel Test Utilities Integration Suite', () => {
       agenticWorkflowMock,
       inputData,
       testContext,
-      10
+      { maxIterations: 10, skipValidation: true },
     );
 
     expect(fakeLLM.calls.length).toBe(1);

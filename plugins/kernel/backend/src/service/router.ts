@@ -30,7 +30,7 @@ export const sourceValidator = (
   res: Response,
   next: NextFunction
 ) => {
-  const source = req.params.source;
+  const source = req.params['source'];
   if (!sourceRegistry.has(source) && source !== 'all') {
     const supportedSources = sourceRegistry.list().map(it => it.id).join(', ');
     return res.status(422).json({
@@ -48,7 +48,7 @@ export const queryValidator = (
   res: Response,
   next: NextFunction,
 ) => {
-  const query = req.query.query;
+  const query = req.query['query'];
   if (!query || typeof query !== 'string' || query.trim().length === 0) {
     return res.status(422).json({
       message: 'You should pass in the query via query params',

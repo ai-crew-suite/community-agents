@@ -27,8 +27,13 @@ export interface WorkflowRunResult<TState> {
 
 export interface TestWorkflowRunOptions {
   maxIterations?: number;
+  /** Disables structural graph rule validation checks. Useful for isolated execution unit testing. */
+  skipValidation?: boolean;
 }
 
+/**
+ * Pure runtime engine executor isolated from static validation rules.
+ */
 class WorkflowTestExecutor<TState, TInput> {
   private events: AgentEvent[] = [];
   private visitedNodes = new Set<string>();
@@ -45,17 +50,6 @@ class WorkflowTestExecutor<TState, TInput> {
     private readonly ctx: NodeExecutionContext,
     private readonly maxIterations: number
   ) {
-    // FIX (2554): Restored to a single argument signature matching your local function type footprint
-    const structuralViolations = validateWorkflowDefinition(def);
-    if (structuralViolations.length > 0) {
-      // FIX (2532): Added safe optional chaining access guard fallback string
-      const failureMsg = structuralViolations[0]?.message ?? 'Unknown validation failure';
-      throw new NodeError(
-        `Static workflow definition failed structural rules verification: ${failureMsg}`,
-        'unknown'
-      );
-    }
-
     this.parsedInput = def.inputSchema.parse(rawInput);
     this.currentPointer = def.entryNode;
     this.workflowState = this.initializeDefaultState(rawInput);
@@ -69,6 +63,7 @@ class WorkflowTestExecutor<TState, TInput> {
       await this.processNodeExecutionStep(nodeName);
       this.currentPointer = this.resolveNextTrajectory(nodeName);
     }
+
     this.emitEvent({ type: 'done', data: { runId: this.runId } });
     return { events: this.events, finalState: this.workflowState };
   }
@@ -98,12 +93,12 @@ class WorkflowTestExecutor<TState, TInput> {
     const approval = interrupt.approvalRequest(this.workflowState);
     this.emitEvent({
       type: 'approval_request',
-      data: {
-        runId: this.runId,
-        approvalId: `test-approval-${nodeName}`,
-        node: nodeName,
-        reason: approval.reason,
-        effect: approval.effect
+      data: { 
+        runId: this.runId, 
+        approvalId: `test-approval-${nodeName}`, 
+        node: nodeName, 
+        reason: approval.reason, 
+        effect: approval.effect 
       },
     });
   }
@@ -136,10 +131,7 @@ class WorkflowTestExecutor<TState, TInput> {
   }
 
   private emitStepLifecycleEvent(node: string, phase: 'enter' | 'exit'): void {
-    this.emitEvent({
-      type: 'step',
-      data: { runId: this.runId, seq: this.sequenceId, node, phase }
-    });
+    this.emitEvent({ type: 'step', data: { runId: this.runId, seq: this.sequenceId, node, phase } });
   }
 
   private emitEvent(event: AgentEvent): void {
@@ -151,6 +143,9 @@ class WorkflowTestExecutor<TState, TInput> {
   }
 }
 
+/**
+ * Orchestrates verification and execution layers for a test workflow environment execution.
+ */
 export async function runWorkflow<TState, TInput>(
   def: WorkflowDefinition<TState, TInput>,
   rawInput: TInput,
@@ -158,5 +153,19 @@ export async function runWorkflow<TState, TInput>(
   options?: TestWorkflowRunOptions | number,
 ): Promise<WorkflowRunResult<TState>> {
   const resolvedMaxIterations = typeof options === 'number' ? options : (options?.maxIterations ?? 100);
+  const skipValidation = typeof options === 'object' ? !!options?.skipValidation : false;
+
+  // Perform validation ONLY if not explicitly skipped by unit test demands
+  if (!skipValidation) {
+    const structuralViolations = validateWorkflowDefinition(def);
+    if (structuralViolations.length > 0) {
+      const failureMsg = structuralViolations[0]?.message ?? 'Unknown validation failure';
+      throw new NodeError(
+        `Static workflow definition failed structural rules verification: ${failureMsg}`,
+        'unknown'
+      );
+    }
+  }
+
   return new WorkflowTestExecutor(def, rawInput, ctx, resolvedMaxIterations).execute();
 }

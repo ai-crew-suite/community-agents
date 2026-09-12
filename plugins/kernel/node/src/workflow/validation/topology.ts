@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { END, WorkflowDefinition } from '../../types/workflow/definition';
-import { ValidationRule, WorkflowValidationViolation } from './rules';
+import type { WorkflowValidationViolation, ValidationRule } from '../../types/workflow/validationRules';
 
 /**
  * Encapsulates the state and graph traversal logic required to perform
@@ -99,7 +99,7 @@ export class TopologyTraversal {
  * @param nodeNames - The complete set of verified node names declared in the workflow.
  * @returns A structured Map plotting nodes to their corresponding set of targets.
  */
-function buildAdjacencyMap(edges: WorkflowDefinition<any, any>['edges'], nodeNames: Set<string>) {
+export function buildAdjacencyMap(edges: WorkflowDefinition<any, any>['edges'], nodeNames: Set<string>) {
   const outgoing = new Map<string, Set<string | symbol>>();
   nodeNames.forEach(node => outgoing.set(node, new Set()));
 
