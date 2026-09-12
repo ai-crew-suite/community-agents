@@ -14,10 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 import {
   createBackendPlugin,
   coreServices,
+  createExtensionPoint,
 } from '@backstage/backend-plugin-api';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
@@ -38,11 +38,21 @@ import {
   TriggerBinding,
   WorkflowDefinition,
 } from '@ai-crew-suite/plugin-kernel-node';
+import { ValidationRule } from '@ai-crew-suite/plugin-kernel-node'; // Now cleanly shared from node library
 import {
   createAiBackendServices,
   createRouter,
   createSourceRegistry,
 } from './service';
+
+export interface WorkflowValidationExtensionPoint {
+  registerValidator(rule: ValidationRule): void;
+}
+
+export const workflowValidationExtensionPoint = 
+  createExtensionPoint<WorkflowValidationExtensionPoint>({
+    id: 'kernel.workflow.validation',
+  });
 
 /**
  * Registers and boots the AI backend runtime.
@@ -56,6 +66,8 @@ export const ragAiPlugin = createBackendPlugin({
     const agents = new Map<string, AgentDefinition>();
     const triggers: TriggerBinding[] = [];
     const workflowDefinitions = new Map<string, WorkflowDefinition>();
+    const customValidationRules: ValidationRule[] = [];
+    
     const runtimeStores: {
       sessionStore?: SessionStore;
       checkpointStore?: CheckpointStore;
@@ -63,6 +75,12 @@ export const ragAiPlugin = createBackendPlugin({
       artifactSink?: ArtifactSink;
       auditLogSink?: AuditLogSink;
     } = {};
+
+    env.registerExtensionPoint(workflowValidationExtensionPoint, {
+      registerValidator(rule: ValidationRule) {
+        customValidationRules.push(rule);
+      },
+    });
 
     env.registerExtensionPoint(sourceExtensionPoint, {
       addSource(source) {
@@ -157,6 +175,12 @@ export const ragAiPlugin = createBackendPlugin({
       async init({ logger, config, httpRouter }) {
         logger.debug(`Registered ${triggers.length} AI triggers`);
 
+        // Clean, type-safe assignment using the new optional customRules definition property
+        for (const [id, def] of workflowDefinitions.entries()) {
+          def.customRules = [...(def.customRules ?? []), ...customValidationRules];
+          workflowDefinitions.set(id, def);
+        }
+
         const services = createAiBackendServices({
           logger,
           config,
@@ -178,6 +202,7 @@ export const ragAiPlugin = createBackendPlugin({
             logger,
             config,
             sourceRegistry: services.sourceRegistry,
+            // Greenfield Goal: services.controller implements RouteController perfectly
             controller: services.controller,
           }),
         );

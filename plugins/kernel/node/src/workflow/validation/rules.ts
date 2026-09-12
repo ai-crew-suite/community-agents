@@ -13,31 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { END, WorkflowDefinition } from '../../types/workflow/definition';
-
-/**
- * Represents a validation error payload captured during static analysis.
- */
-export type WorkflowValidationViolation = { message: string };
-
-/**
- * A standard function signature for pluggable workflow validation rules.
- *
- * @param def - The full underlying workspace workflow definition object under evaluation.
- * @param nodeNames - A pre-calculated, optimization Set containing all declared node keys.
- * @param workflowId - The canonical tracking identifier or fallback name of the target workflow.
- * @returns An array containing discovered structural, type, or behavioral definition violations.
- */
-export type ValidationRule = (
-  def: WorkflowDefinition<any, any>,
-  nodeNames: Set<string>,
-  workflowId: string
-) => WorkflowValidationViolation[];
+import { END } from '../../types/workflow/definition';
+import type { WorkflowValidationViolation, ValidationRule } from '../../types/workflow/validationRules';
 
 /**
  * Evaluates core root configuration metadata on the workflow specification.
  *
- * Verifies that the workflow provides a traceable tracking identity block, an asset 
+ * Verifies that the workflow provides a traceable tracking identity block, an asset
  * entry schema configuration, a state preservation contract, and valid versioning details.
  *
  * @param def - The workflow definition structure.

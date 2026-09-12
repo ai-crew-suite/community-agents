@@ -18,26 +18,17 @@ import type { WorkflowDefinition } from '../types/workflow/definition';
 import { type EndSymbol, END } from '../types/workflow/definition';
 import type { NodeExecutionContext } from '../types/workflow/execution';
 import { NodeError } from '../workflow/errors';
+import { validateWorkflowDefinition } from '../workflow/validation/definition';
 
-/**
- * Structural return payload emitted upon completing an automated test workflow execution.
- *
- * @template TState - The explicit structural data layout governing the workflow state engine.
- */
 export interface WorkflowRunResult<TState> {
-  /** An ordered array capturing all operational lifecycle events emitted during execution. */
   events: AgentEvent[];
-  /** The final, fully validated state object snapshot at the point of exit or termination. */
   finalState: TState;
 }
 
-/**
- * Orchestrates the modular execution loop of a workflow graph within sandboxed test runs.
- *
- * Separates concerns like input validation, interrupt intercept management, node execution,
- * and edge trajectory mapping into dedicated, single-responsibility methods to maintain
- * a cyclomatic complexity score below 3 per function blocks.
- */
+export interface TestWorkflowRunOptions {
+  maxIterations?: number;
+}
+
 class WorkflowTestExecutor<TState, TInput> {
   private events: AgentEvent[] = [];
   private visitedNodes = new Set<string>();
@@ -54,25 +45,30 @@ class WorkflowTestExecutor<TState, TInput> {
     private readonly ctx: NodeExecutionContext,
     private readonly maxIterations: number
   ) {
+    // FIX (2554): Restored to a single argument signature matching your local function type footprint
+    const structuralViolations = validateWorkflowDefinition(def);
+    if (structuralViolations.length > 0) {
+      // FIX (2532): Added safe optional chaining access guard fallback string
+      const failureMsg = structuralViolations[0]?.message ?? 'Unknown validation failure';
+      throw new NodeError(
+        `Static workflow definition failed structural rules verification: ${failureMsg}`,
+        'unknown'
+      );
+    }
+
     this.parsedInput = def.inputSchema.parse(rawInput);
     this.currentPointer = def.entryNode;
     this.workflowState = this.initializeDefaultState(rawInput);
   }
 
-  /**
-   * Drives the internal state engine through execution steps until hitting an END node.
-   */
   public async execute(): Promise<WorkflowRunResult<TState>> {
     while (this.currentPointer !== END) {
       this.enforceLoopBoundsGuard();
-
       const nodeName = this.currentPointer as string;
       this.evaluateInterruptGate(nodeName);
-
       await this.processNodeExecutionStep(nodeName);
       this.currentPointer = this.resolveNextTrajectory(nodeName);
     }
-
     this.emitEvent({ type: 'done', data: { runId: this.runId } });
     return { events: this.events, finalState: this.workflowState };
   }
@@ -96,7 +92,6 @@ class WorkflowTestExecutor<TState, TInput> {
 
   private evaluateInterruptGate(nodeName: string): void {
     if (this.visitedNodes.has(nodeName)) return;
-
     const interrupt = this.def.interrupts?.find(i => i.beforeNode === nodeName);
     if (!interrupt) return;
 
@@ -120,11 +115,9 @@ class WorkflowTestExecutor<TState, TInput> {
     }
 
     this.emitStepLifecycleEvent(nodeName, 'enter');
-
     const patch = await nodeAction({ state: this.workflowState, input: this.parsedInput, ctx: this.ctx });
     this.applyStatePatch(patch);
     this.visitedNodes.add(nodeName);
-
     this.emitStepLifecycleEvent(nodeName, 'exit');
   }
 
@@ -138,7 +131,6 @@ class WorkflowTestExecutor<TState, TInput> {
   private resolveNextTrajectory(nodeName: string): string | EndSymbol {
     const currentEdges = (this.def.edges || []).filter(e => e.from === nodeName);
     const targetEdge = currentEdges.find(e => 'to' in e) ?? currentEdges.find(e => 'route' in e);
-
     if (!targetEdge) return END;
     return 'to' in targetEdge ? targetEdge.to : targetEdge.route(this.workflowState);
   }
@@ -159,19 +151,12 @@ class WorkflowTestExecutor<TState, TInput> {
   }
 }
 
-/**
- * Drive a WorkflowDefinition through a minimal in-test engine and return the ordered
- * AgentEvent sequence. Supports linear and conditional branching, loops, and declarative interrupts.
- *
- * This function handles initial execution wrapping by routing commands through a dedicated
- * `WorkflowTestExecutor` class structure to maintain strict cyclomatic complexity constraints.
- */
 export async function runWorkflow<TState, TInput>(
   def: WorkflowDefinition<TState, TInput>,
   rawInput: TInput,
   ctx: NodeExecutionContext,
-  maxIterations = 100,
+  options?: TestWorkflowRunOptions | number,
 ): Promise<WorkflowRunResult<TState>> {
-  const executor = new WorkflowTestExecutor(def, rawInput, ctx, maxIterations);
-  return executor.execute();
+  const resolvedMaxIterations = typeof options === 'number' ? options : (options?.maxIterations ?? 100);
+  return new WorkflowTestExecutor(def, rawInput, ctx, resolvedMaxIterations).execute();
 }

@@ -16,6 +16,7 @@
 import type { ZodType } from 'zod';
 import type { ApprovalDecision } from '../storage/runtime';
 import type { NodeExecutionContext } from './execution';
+import { ValidationRule } from './validationRules';
 
 /**
  * ============================================================================
@@ -41,6 +42,11 @@ export type WorkflowDefinition<TState = unknown, TInput = unknown> = {
   interrupts?: WorkflowInterrupt<TState>[];
   /** Artifact kinds this workflow may emit; the executor validates emissions. */
   artifactKinds: readonly string[];
+  /**
+   * Dynamic structural validation rules contributed by external plugins
+   * via Backstage Extension Points. Evaluated pre-flight.
+   */
+  customRules?: ValidationRule[];
 };
 
 /**

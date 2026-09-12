@@ -14,17 +14,11 @@
  * limitations under the License.
  */
 import { WorkflowDefinition } from '../../types/workflow/definition';
-import {
-  ValidationRule,
-  WorkflowValidationViolation,
-  checkMetadata,
-  checkGraphNodes,
-  checkEdges,
-  checkInterrupts,
-} from './rules';
+import type { ValidationRule, WorkflowValidationViolation } from '../../types/workflow/validationRules';
+import { checkMetadata, checkGraphNodes, checkEdges, checkInterrupts } from './rules';
 import { checkTopology } from './topology';
 
-export const VALIDATION_PIPELINE: ValidationRule[] = [
+export const CORE_VALIDATION_PIPELINE: ValidationRule[] = [
   checkMetadata,
   checkGraphNodes,
   checkEdges,
@@ -38,5 +32,11 @@ export function validateWorkflowDefinition(
   const workflowId = def?.id?.trim() || 'unnamed-workflow';
   const nodeNames = new Set(Object.keys(def?.nodes || {}));
 
-  return VALIDATION_PIPELINE.flatMap(rule => rule(def, nodeNames, workflowId));
+  // Combine fixed core code assertions with rules appended via extension points
+  const dynamicPipeline = [
+    ...CORE_VALIDATION_PIPELINE,
+    ...(def.customRules ?? [])
+  ];
+
+  return dynamicPipeline.flatMap(rule => rule(def, nodeNames, workflowId));
 }

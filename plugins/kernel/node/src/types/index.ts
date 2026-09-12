@@ -40,3 +40,4 @@ export * from './tools/vcs';
 // Workflow
 export * from './workflow/definition';
 export * from './workflow/execution';
+export * from './workflow/validationRules';
