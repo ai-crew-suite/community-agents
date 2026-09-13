@@ -2,7 +2,17 @@
 
 The current sync command is broken. It is called from the build command as well as a root package.json script. It is commented out in the CLI build command currently. Here's a description of the problem.
 
-# Build failures
+## Typecheck
+
+Need to fix not outputting `tsc` error output when called from:
+
+`packages/cli/src/bin/commands/build/index.ts`
+
+## Clean
+
+Is `clean` task cleaning both `dist` and `dist-types`?
+
+## Build failures
 
 The broad rewrite happened in a committed change, and the strongest match is:
 
@@ -162,3 +172,128 @@ So the correct distinction is:
 - **Do not blindly update every config:** `cli`, for example, intentionally emits to its own `dist/bin`, and frontend/app package output paths have their own Backstage package conventions.
 
 The output paths should follow the package’s Backstage packaging identity, as the existing working configs do. We should not mechanically add the same relative path pattern to every file.
+
+After adding the `outDir` config block to kernel/node's `tsconfig.json`, the `outDir` override exposed a second, more specific mismatch. The current TypeScript configuration emits:
+
+`dist-types/plugins/kernel/node/index.d.ts`
+
+because:
+
+- `rootDir` is inherited as `./src`
+- `outDir` is `../../../dist-types/plugins/kernel/node`
+- TypeScript preserves the source-relative path under `rootDir`
+
+So `src/index.ts` becomes:
+
+`dist-types/plugins/kernel/node/index.d.ts`
+
+But this repository’s custom build contract is checking for:
+
+`dist-types/plugins/kernel/node/src/index.d.ts`
+
+That is why the package still fails even though declarations now exist.
+
+There are actually two independent issues in the current build setup:
+
+1. **Before the override:** declarations were targeted at the package-local `dist` directory, while the custom build expected `dist-types`.
+2. **After the override:** declarations are emitted to `dist-types`, but one directory higher than the custom check expects.
+
+The current package metadata contributes to this. `package.json` declares:
+
+`"main": "src/index.ts",`
+
+`"types": "src/index.ts"`
+
+The Backstage package builder uses that source entrypoint to derive the expected declaration path, which is why it looks for `.../src/index.d.ts`.
+
+The previous successful build was not evidence that the configuration was correct. Before the custom declaration-emission changes, the build ran `backstage-cli package build` directly. The current custom command now manually runs:
+
+`tsc --emitDeclarationOnly`
+
+`backstage-cli package build`
+
+That introduced an implicit contract between the manual TypeScript output and Backstage’s package builder. Those two pieces currently disagree about whether `src` should remain in the declaration path.
+
+There is also stale incremental state involved:
+
+`plugins/kernel/node/tsconfig.tsbuildinfo`
+
+The build clean command only removes the package-local `dist` directory. It does not remove `tsconfig.tsbuildinfo`, and the build metadata still recorded the old output directory. That can cause TypeScript to skip emission after the config changes. In this run, declarations exist under `dist-types`, so the path mismatch is the immediate error, but stale build metadata remains a separate problem.
+
+The key point is: the `outDir` value I previously suggested corrected the first mismatch, but it does not match the declaration path that this custom Backstage build currently validates. The next fix should be made to the build contract or package-entrypoint/output layout as a pair, rather than adding the same `outDir` override blindly.
+
+### Final Fix
+
+Implemented the generalized build fix for kernel/node and kernel/backend.
+
+### Changes made
+
+#### `plugins/kernel/node/tsconfig.json`
+
+- Keeps declarations under node.
+- Sets `"rootDir": "."` so src/index.ts emits as:
+
+`dist-types/plugins/kernel/backend/src/index.d.ts`
+
+```json
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "../../../dist-types/plugins/kernel/node",
+    "rootDir": "."
+  },
+  "references": []
+}
+```
+
+#### `plugins/kernel/backend/tsconfig.json`
+
+- Adds the equivalent package-specific `outDir`.
+- Sets `"rootDir": "."` so its `src/index.ts` entrypoint is emitted as:
+
+`dist-types/plugins/kernel/backend/src/index.d.ts`
+
+```json
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "../../../dist-types/plugins/kernel/backend",
+    "rootDir": "."
+  },
+  "references": [
+    {
+      "path": "../node"
+    }
+  ]
+}
+```
+
+#### `plugins/kernel/backend/src/index.ts`
+
+- Added the standard Backstage package entrypoint.
+- Re-exports the existing plugin implementation from `plugin.ts`.
+
+#### `packages/cli/src/bin/commands/build/index.ts`
+
+- Restored the `sync:refs` call.
+- Cleans TypeScript composite build state before declaration generation.
+- Uses:
+
+`tsc --build --force --emitDeclarationOnly`
+
+This rebuilds referenced projects, avoids stale `tsconfig.tsbuildinf`, and does not place JavaScript files in `dist-types`.
+
+**Why backend also needed an entrypoint fix**
+
+Backstage’s package builder defaults to `src/index.ts`; it does not use the package’s main or types fields to discover the build entrypoint in this configuration. The backend had no `src/index.ts`, only `src/plugin.ts`, so Backstage was correctly looking for a declaration file that could never be generated.
+
+**Validation**
+
+The following now succeeds:
+
+`yarn turbo run build --filter=@ai-crew-suite/plugin-kernel-backend`
+
+
+This builds both kernel/node and kernel/backend successfully. The expected declaration files exist, and the staged `dist-types` output contains declarations only.
+
+The existing Rollup sourcemap warning remains unrelated to this fix. I did not modify implementation lint, typecheck, or unit-test issues.

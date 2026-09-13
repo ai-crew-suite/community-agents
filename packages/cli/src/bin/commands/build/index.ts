@@ -40,7 +40,6 @@ program
     if (cleanResult.status !== 0) {
       process.exit(cleanResult.status ?? 1);
     }
-/*
     const syncResult = spawnSync('node', [mainCliPath, 'sync:refs'], {
       stdio: 'inherit',
       shell: true,
@@ -50,7 +49,7 @@ program
     if (syncResult.status !== 0) {
       process.exit(syncResult.status ?? 1);
     }
-*/
+
     console.log('\x1b[35m┌────────────────────────────────────────────────────────┐\x1b[0m');
     console.log('\x1b[35m│ 🚀 AI CREW SUITE: Orchestrating Backstage Build Target │\x1b[0m');
     console.log('\x1b[35m└────────────────────────────────────────────────────────┘\x1b[0m');
@@ -62,9 +61,23 @@ program
       path.dirname(typescriptPackageJson),
       'bin/tsc',
     );
+    const declarationCleanResult = spawnSync(
+      process.execPath,
+      [typescriptCliPath, '--build', '--clean'],
+      {
+        stdio: 'inherit',
+        shell: true,
+        cwd: process.cwd(),
+      },
+    );
+
+    if (declarationCleanResult.status !== 0) {
+      process.exit(declarationCleanResult.status ?? 1);
+    }
+
     const declarationResult = spawnSync(
       process.execPath,
-      [typescriptCliPath, '--emitDeclarationOnly'],
+      [typescriptCliPath, '--build', '--force', '--emitDeclarationOnly'],
       {
         stdio: 'inherit',
         shell: true,
