@@ -64,9 +64,35 @@ Rename `service/` to `api/`. This module represents your public-facing infrastru
 
 ### Direct Structural Comparison
 
-| Current Subdirectory Path   | Proposed Restructuring Destination | Core Architectural Advantage                                 |
-| :-------------------------- | :--------------------------------- | :----------------------------------------------------------- |
-| `src/@types/`               | `src/types/`                       | Prevents compilation conflicts with ambient `.d.ts` naming rules. |
-| `src/service/controller.ts` | `src/api/controller/`              | Breaks a single 430-line file down into isolated, single-responsibility modules. |
-| `src/service/factory.ts`    | `src/registry/factory.ts`          | Separates extension point data aggregation from HTTP request routing logic. |
-| `src/testHelpers/`          | `src/testUtils/`                   | Matches the naming convention established in your node-library (`kernel/node/src/testUtils`). |
+| Current Subdirectory Path | Proposed Restructuring Destination | Core Architectural Advantage |
+| :--- | :--- | :--- |
+| `src/@types/` | `src/types/` | Prevents compilation conflicts with ambient `.d.ts` naming rules. |
+| `src/service/controller.ts` | `src/api/controller/` | Breaks a single 430-line file down into isolated, single-responsibility modules. |
+| `src/service/factory.ts` | `src/registry/factory.ts` | Separates extension point data aggregation from HTTP request routing logic. |
+| `src/testHelpers/` | `src/testUtils/` | Matches the naming convention established in your node-library (`kernel/node/src/testUtils`). |
+
+### 1. Why Some Constructor Imports Are Currently Unused
+
+In your original long implementation, the `controller.ts` file contained **placeholder stubs** for several endpoints that were deferred or mocked out:
+
+```typescript
+approveRun = async (req: Request, res: Response) => { ... return res.end(); };
+triggerRun = async (req: Request, res: Response) => { ... return res.status(501); }; // Deferred
+webhookRun = async (req: Request, res: Response) => { ... return res.status(501); }; // Deferred
+```
+
+Those "unused" constructor parameters—like `sessionStore`, `checkpointStore`, `artifactSink`, `auditLogSink`, and `triggers`—are the exact engine pieces required to build out the real logic for those deferred endpoints (e.g., updating checkpoint states, persisting artifacts, saving session history, and matching inbound webhooks to triggers).
+
+Because those endpoints are currently empty status responses, the parameters naturally flag as unused.
+
+### The `runtime` and `toolRegistry` Exception
+
+Look closely at your new `startRunAction` in `execution.ts`. Right now, it validates the request, checks the local in-memory agent cache, checks rate limits, and exits:
+
+```typescript
+const agent = ctx.agents.get(agentId);
+// ... rate limiting check ...
+return res.end();
+```
+
+In a fully realized architecture, `startRun` shouldn't just end the response immediately; it needs to **actually kick off the agent workflow execution thread**. To do that, the code will eventually call `ctx.runtime.execute(...)` or `ctx.runtime.stream(...)` using the tools registered in the `toolRegistry`. Once you hook the runtime engine into that action handler, those parameters will instantly become active.

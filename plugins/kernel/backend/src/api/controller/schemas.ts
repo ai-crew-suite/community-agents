@@ -56,6 +56,15 @@ export const QueryEntityFilterZodSchema = z.preprocess((val) => {
  * ============================================================================
  */
 
+export const ApproveRunParamsSchema = z.object({
+  id: z.string().min(1, 'Run tracking identifier parameter is required'),
+});
+
+export const ApproveRunBodySchema = z.object({
+  status: z.enum(['approved', 'rejected']),
+  note: z.string().optional(),
+});
+
 export const CreateEmbeddingsSchema = z.object({
   query: z.string().min(1, 'input.query is required'),
   source: z.string().optional(),
@@ -85,15 +94,33 @@ export const StreamRunParamsSchema = z.object({
   id: z.string().min(1, 'Run tracking identifier is required'),
 });
 
+export const TriggerRunParamsSchema = z.object({
+  source: z.string().min(1, 'Trigger payload source parameter is required'),
+});
+
+export const WebhookRunParamsSchema = z.object({
+  provider: z.string().min(1, 'Webhook payload provider parameter is required'),
+});
+
+export const GenericEventPayloadSchema = z.object({
+  triggerId: z.string().min(1, 'triggerId identifier mapping is required'),
+  query: z.string().default('Automated background trigger event processing payload pass.'),
+});
+
 /**
  * ============================================================================
  *   Strongly Typed Contract Inferences
  * ============================================================================
  */
 
+export type ApproveRunBody = z.infer<typeof ApproveRunBodySchema>;
+export type ApproveRunParams = z.infer<typeof ApproveRunParamsSchema>;
 export type CreateEmbeddingsInput = z.infer<typeof CreateEmbeddingsSchema>;
 export type DeleteEmbeddingsInput = z.infer<typeof DeleteEmbeddingsSchema>;
+export type GenericEventPayload = z.infer<typeof GenericEventPayloadSchema>;
 export type GetEmbeddingsInput = z.infer<typeof GetEmbeddingsQuerySchema>;
-export type StartRunParams = z.infer<typeof StartRunParamsSchema>;
 export type StartRunBody = z.infer<typeof StartRunBodySchema>;
+export type StartRunParams = z.infer<typeof StartRunParamsSchema>;
 export type StreamRunParams = z.infer<typeof StreamRunParamsSchema>;
+export type TriggerRunParams = z.infer<typeof TriggerRunParamsSchema>;
+export type WebhookRunParams = z.infer<typeof WebhookRunParamsSchema>;

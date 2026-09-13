@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { Request } from 'express';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type {
   LoggerService,
@@ -180,13 +181,22 @@ export type HardeningOptions = {
  */
 
 export interface ControllerContext {
-  logger: LoggerService;
+  agents: Map<string, AgentDefinition>;
+  artifactSink?: ArtifactSink;
+  auditLogSink?: AuditLogSink;
   augmentationIndexer: AugmentationIndexer;
+  checkpointStore?: CheckpointStore;
+  consumeRateLimit: (agentId: string) => boolean;
+  fromStoredStep: (type: string, payload: unknown) => AgentEvent | undefined;
+  hardening: HardeningOptions;
+  identity: (req: Request) => string;
+  logger: LoggerService;
+  parseLastEventId: (value?: string) => number;
   retrievalPipeline?: RetrievalPipeline;
   runStore?: RunStore;
-  agents: Map<string, AgentDefinition>;
+  runtime: AgentRuntime;
+  sessionStore?: SessionStore;
+  toolRegistry: ToolRegistry;
+  triggers: TriggerBinding[];
   validateSource: (source: string | undefined) => EmbeddingsSource;
-  consumeRateLimit: (agentId: string) => boolean;
-  parseLastEventId: (value?: string) => number;
-  fromStoredStep: (type: string, payload: unknown) => AgentEvent | undefined;
 }

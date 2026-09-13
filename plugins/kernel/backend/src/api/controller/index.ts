@@ -31,10 +31,25 @@ import {
   TriggerBinding,
 } from '@ai-crew-suite/plugin-kernel-node';
 import { AgentRuntime } from '../../runtime/AgentRuntime';
-import type { HardeningOptions, RouteController } from '../../types';
-import { ControllerContext } from '../../types';
-import { createEmbeddingsAction, deleteEmbeddingsAction, getEmbeddingsAction } from './embedding';
-import { startRunAction, streamRunEventsAction } from './execution';
+import type {
+  ControllerContext,
+  HardeningOptions,
+  RouteController,
+} from '../../types';
+import {
+  createEmbeddingsAction,
+  deleteEmbeddingsAction,
+  getEmbeddingsAction,
+} from './embedding';
+import {
+  approveRunAction,
+  startRunAction,
+  streamRunEventsAction,
+} from './run';
+import {
+  triggerRunAction,
+  webhookRunAction,
+} from './event';
 
 interface AuthenticatedUserRequest {
   user?: {
@@ -63,21 +78,36 @@ export class WorkflowController implements RouteController {
     private readonly hardening: HardeningOptions = {},
   ) {}
 
+/**
+ * ============================================================================
+  *  Core Lifecycle & Authentication Helpers
+ * ============================================================================
+ */
+
   /**
    * High-cohesion lookup context grouping all structural dependencies
    * into a single parameter footprint passed down to modular sub-actions.
    */
   private get context(): ControllerContext {
     return {
-      logger: this.logger,
+      agents: this.agents,
+      artifactSink: this.artifactSink,
+      auditLogSink: this.auditLogSink,
       augmentationIndexer: this.augmentationIndexer,
+      checkpointStore: this.checkpointStore,
+      consumeRateLimit: this.consumeRateLimit.bind(this),
+      fromStoredStep: this.fromStoredStep.bind(this),
+      hardening: this.hardening,
+      identity: this.identity.bind(this),
+      logger: this.logger,
+      parseLastEventId: this.parseLastEventId.bind(this),
       retrievalPipeline: this.retrievalPipeline,
       runStore: this.runStore,
-      agents: this.agents,
+      runtime: this.runtime,
+      sessionStore: this.sessionStore,
+      toolRegistry: this.toolRegistry,
+      triggers: this.triggers,
       validateSource: this.validateSource.bind(this),
-      consumeRateLimit: this.consumeRateLimit.bind(this),
-      parseLastEventId: this.parseLastEventId.bind(this),
-      fromStoredStep: this.fromStoredStep.bind(this),
     };
   }
 
@@ -97,7 +127,7 @@ export class WorkflowController implements RouteController {
 
 /**
  * ============================================================================
- * Public Route Delegations (Implements RouteController natively)
+ *   Public Route Group: Embeddings & Catalog Discovery
  * ============================================================================
  */
 
@@ -122,6 +152,12 @@ export class WorkflowController implements RouteController {
     return res.status(200).send({ agents: items });
   };
 
+/**
+ * ============================================================================
+ *   Public Route Group: User-Driven Run Orchestration & SSE Streams
+ * ============================================================================
+ */
+
   public startRun = async (req: Request, res: Response): Promise<Response | void> => {
     if (!this.isAuthenticated(req)) return res.status(401).send({ message: 'Unauthorized' });
     return startRunAction(req, res, this.context);
@@ -135,23 +171,28 @@ export class WorkflowController implements RouteController {
 
   public approveRun = async (req: Request, res: Response): Promise<Response | void> => {
     if (!this.isAuthenticated(req)) return res.status(401).send({ message: 'Unauthorized' });
-    this.identity(req);
-    return res.end();
+    return approveRunAction(req, res, this.context);
   };
+
+/**
+ * ============================================================================
+ *   Public Route Group: Asynchronous Automated Infrastructure Triggers
+ * ============================================================================
+ */
 
   public triggerRun = async (req: Request, res: Response): Promise<Response> => {
     if (!this.isAuthenticated(req)) return res.status(401).send({ message: 'Unauthorized' });
-    return res.status(501).send({ message: 'Trigger dispatch deferred during greenfield rebuild' });
+    return triggerRunAction(req, res, this.context);
   };
 
   public webhookRun = async (req: Request, res: Response): Promise<Response> => {
     if (!this.isAuthenticated(req)) return res.status(401).send({ message: 'Unauthorized' });
-    return res.status(501).send({ message: 'Webhook dispatch deferred during greenfield rebuild' });
+    return webhookRunAction(req, res, this.context);
   };
 
   /**
    * ============================================================================
-   * Private Helper Core Methods
+   *   Private Helper Core Methods (Internal Business Logic Mechanics)
    * ============================================================================
    */
 
