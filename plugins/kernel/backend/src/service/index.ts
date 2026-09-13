@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 import { createAiBackendServices } from './factory';
-import { createRouter } from './router';
-import type { AiBackendServiceOptions } from '../@types';
+import { createRouter } from '../api/router';
+import type { AiBackendServiceOptions } from '../types';
 
 export * from './factory';
-export * from './router';
+export * from '../api/router';
 
 /**
  * Creates the HTTP router object consumed by Backstage plugin wiring.

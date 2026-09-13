@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import type { Config } from '../../config';
-import type { AiBackendConfig } from '../@types';
+import type { AiBackendConfig } from '../types';
 
 type Assert<T extends true> = T;
 

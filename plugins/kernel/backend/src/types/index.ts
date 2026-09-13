@@ -21,10 +21,12 @@ import type {
 } from '@backstage/backend-plugin-api';
 import type {
   AgentDefinition,
+  AgentEvent,
   ArtifactSink,
   AuditLogSink,
   AugmentationIndexer,
   CheckpointStore,
+  EmbeddingsSource,
   RetrievalPipeline,
   RunStore,
   SessionStore,
@@ -35,7 +37,7 @@ import type {
   WorkflowDefinition,
 } from '@ai-crew-suite/plugin-kernel-node';
 import type { AgentRuntime } from '../runtime';
-import type { AiCoreController } from '../service/controller';
+import type { WorkflowController } from '../service/controller';
 
 /**
  * Plugin configuration for the `ai` root config section.
@@ -124,7 +126,7 @@ export interface AiBackendServices {
   retrievalPipeline: RetrievalPipeline;
   toolRegistry: ToolRegistry;
   runtime: AgentRuntime;
-  controller: AiCoreController;
+  controller: WorkflowController;
 }
 
 /** Fully resolved dependencies required to bind the HTTP router. */
@@ -135,7 +137,7 @@ export interface RouterOptions extends AiBackendServiceOptions {
 
 /** Minimal controller surface needed by the router binder. */
 export type RouteController = Pick<
-  AiCoreController,
+  WorkflowController,
   | 'createEmbeddings'
   | 'deleteEmbeddings'
   | 'getEmbeddings'
@@ -170,3 +172,21 @@ export type HardeningOptions = {
   maxNodeDurationMs?: number;
   rateLimitPerMinute?: number;
 };
+
+/**
+ * ============================================================================
+ *   New Types
+ * ============================================================================
+ */
+
+export interface ControllerContext {
+  logger: LoggerService;
+  augmentationIndexer: AugmentationIndexer;
+  retrievalPipeline?: RetrievalPipeline;
+  runStore?: RunStore;
+  agents: Map<string, AgentDefinition>;
+  validateSource: (source: string | undefined) => EmbeddingsSource;
+  consumeRateLimit: (agentId: string) => boolean;
+  parseLastEventId: (value?: string) => number;
+  fromStoredStep: (type: string, payload: unknown) => AgentEvent | undefined;
+}

@@ -15,4 +15,4 @@
  */
 export { createPromptTemplates } from './prompts';
 export { createDefaultToolPackTools } from './ToolPacks';
-export { InMemoryToolRegistry } from './ToolRegistry';
+export { InMemoryToolRegistry } from '../registry/ToolRegistry';

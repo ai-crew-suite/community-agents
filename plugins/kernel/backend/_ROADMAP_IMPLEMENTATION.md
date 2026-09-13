@@ -22,3 +22,51 @@ Aggregated from the 18 agentic workflow plugins' `_ROADMAP_IMPLEMENTATION.md` fi
 ## 4. LLM-driven workflow features (ROADMAP item 2)
 
 - No plugin pair currently exercises a model-orchestrated workflow: every graph is deterministic code with the model used only for bounded, schema-validated synthesis/narration. If a genuinely LLM-orchestrated workflow is wanted, it needs: tool-calling support in `ModelExecutor`/`WorkflowContext` (model proposes tool calls, runtime executes them under allow-list + budgets), per-node token streaming (`token.node`, see core-node items), and the existing approval policy on write-effect tools. Until then, do not claim LangGraph-style orchestration in docs.
+
+## Outline
+
+```text
+plugins/kernel/backend/src/
+├── plugin.ts               # Central backend system plugin bootstrap entry point
+├── runtime/                # Pure domain engine logic (isolated from HTTP frameworks)
+│   ├── AgentRuntime.ts
+│   ├── GraphExecutor.ts
+│   └── ...
+├── api/                    # Public API / Infrastructure Layer
+│   ├── router.ts           # Pure Express route bindings & HTTP middleware
+│   ├── permissions.ts      # Authentication & Authorization middleware wrappers
+│   └── controller/         # Extracted HTTP endpoints controllers
+│       ├── index.ts        # Lean controller delegating calls downwards
+│       ├── embedding.ts    # Similarity search & indexing route handlers
+│       ├── execution.ts    # Agent running, streaming, and approval actions
+│       └── schemas.ts      # Pure network boundary Zod validation models
+├── registry/               # Service registries populated by Extension Points
+│   ├── ToolRegistry.ts     # Capabilities registration management
+│   ├── SourceRegistry.ts   # Platform discovery data structures
+│   └── factory.ts          # Orchestrator constructing the global services map
+├── types/                  # Internal typed data definitions (Replaces @types/)
+│   └── index.ts            # Clear internal contracts file
+└── testUtils/              # Backend module test fixtures (Renamed from testHelpers)
+    └── index.ts
+```
+
+### Extract registry/ from service/
+
+Move `factory.ts`, `ToolRegistry.ts`, and `createSourceRegistry` out of their split homes and group them inside a unified `registry/` directory. This isolates the logic responsible for handling Backstage Extension Point inputs from the components that handle Express request routing.
+
+### Form the api/ Directory
+
+Rename `service/` to `api/`. This module represents your public-facing infrastructure boundary. Inside `api/controller/`, apply our strategy to break down the 430-line file into:
+
+- `schemas.ts` for network Zod payloads.
+- `embedding.ts` for database/vector writes and reads.
+- `execution.ts` for state runs and SSE event pipelines.
+
+### Direct Structural Comparison
+
+| Current Subdirectory Path   | Proposed Restructuring Destination | Core Architectural Advantage                                 |
+| :-------------------------- | :--------------------------------- | :----------------------------------------------------------- |
+| `src/@types/`               | `src/types/`                       | Prevents compilation conflicts with ambient `.d.ts` naming rules. |
+| `src/service/controller.ts` | `src/api/controller/`              | Breaks a single 430-line file down into isolated, single-responsibility modules. |
+| `src/service/factory.ts`    | `src/registry/factory.ts`          | Separates extension point data aggregation from HTTP request routing logic. |
+| `src/testHelpers/`          | `src/testUtils/`                   | Matches the naming convention established in your node-library (`kernel/node/src/testUtils`). |

@@ -34,7 +34,7 @@ flowchart LR
   Modules[Backend modules] --> EP[plugin-ai-core-node extension points]
   EP --> Core[plugin-ai-core-backend]
   Core --> Registries[Sources, tools, models, agents, triggers]
-  Registries --> Controller[AiCoreController]
+  Registries --> Controller[WorkflowController]
   Controller --> Runtime[AgentRuntime]
   Runtime --> Orchestrators[Single-shot, LangGraph, crew]
   Orchestrators --> LLM[LlmService]
@@ -98,7 +98,7 @@ yarn tsc -b plugins/backend/plugin-ai-core-backend/tsconfig.json --noEmit
 yarn typecheck:full
 ```
 
-When changing a shared contract in `plugin-ai-core-node`, expect follow-up work in every backend module that implements that contract. When changing runtime behavior in `plugin-ai-core-backend`, prefer focused tests around `createAiBackendServices`, `AiCoreController`, `AgentRuntime`, and the affected orchestrator.
+When changing a shared contract in `plugin-ai-core-node`, expect follow-up work in every backend module that implements that contract. When changing runtime behavior in `plugin-ai-core-backend`, prefer focused tests around `createAiBackendServices`, `WorkflowController`, `AgentRuntime`, and the affected orchestrator.
 
 ## Related Pages
 

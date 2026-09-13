@@ -12,7 +12,7 @@ The runtime API is the operational control plane for AI Core. It bridges HTTP ca
 
 ### Route Surface
 
-Routes are bound by `plugin-ai-core-backend` through `bindRoutes` and handled by `AiCoreController`.
+Routes are bound by `plugin-ai-core-backend` through `bindRoutes` and handled by `WorkflowController`.
 
 | Route                 | Method   | Purpose                                                                                                        |
 | --------------------- | -------- | -------------------------------------------------------------------------------------------------------------- |
@@ -33,7 +33,7 @@ The source validator accepts any source registered in `SourceRegistry`, plus the
 ```mermaid
 sequenceDiagram
   participant Client
-  participant Controller as AiCoreController
+  participant Controller as WorkflowController
   participant Runtime as AgentRuntime
   participant Store as Run/session stores
   participant Stream as SSE client
@@ -115,11 +115,11 @@ ai:
 
 | Key                  | Enforced by        | Behavior                                                         |
 | -------------------- | ------------------ | ---------------------------------------------------------------- |
-| `timeoutMs`          | `AiCoreController` | Aborts the run signal after the configured duration.             |
+| `timeoutMs`          | `WorkflowController` | Aborts the run signal after the configured duration.             |
 | `maxRetries`         | `AgentRuntime`     | Retries orchestration failures before emitting a terminal error. |
 | `retryBackoffMs`     | `AgentRuntime`     | Base delay used for exponential retry backoff.                   |
 | `maxTotalTokens`     | `AgentRuntime`     | Stops a run after usage events exceed the configured budget.     |
-| `rateLimitPerMinute` | `AiCoreController` | Applies an in-memory per-agent rolling one-minute request limit. |
+| `rateLimitPerMinute` | `WorkflowController` | Applies an in-memory per-agent rolling one-minute request limit. |
 
 Client disconnects also abort the run signal. Tool and provider implementations should observe `ctx.signal` or the supplied run context signal where possible.
 

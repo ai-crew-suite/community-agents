@@ -21,10 +21,10 @@ import type {
   AiBackendServices,
   HardeningOptions,
   ToolMap,
-} from '../@types';
+} from '../types';
 import { AgentRuntime } from '../runtime/AgentRuntime';
 import { GraphExecutor } from '../runtime/GraphExecutor';
-import { AiCoreController } from './controller';
+import { WorkflowController } from './controller';
 
 /**
  * Creates a mutable in-memory source registry used during backend assembly.
@@ -126,7 +126,7 @@ export function createAiBackendServices(
     ),
   );
 
-  const controller = new AiCoreController(
+  const controller = new WorkflowController(
     logger,
     runtime,
     null as never,

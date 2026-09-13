@@ -33,7 +33,7 @@ import {
   AugmentationIndexer,
 } from '@ai-crew-suite/plugin-kernel-node';
 import { AgentRuntime } from '../runtime/AgentRuntime';
-import type { HardeningOptions, RouteController } from '../@types';
+import type { HardeningOptions, RouteController } from '../types';
 
 /**
  * Interface merger that extends Express's Response signature to natively 
@@ -82,7 +82,7 @@ const QueryEntityFilterZodSchema = z.preprocess((val) => {
  * Bridges express routes to runtime execution, embeddings management, SSE
  * streaming, and approval handling natively conforming to RouteController contracts.
  */
-export class AiCoreController implements RouteController {
+export class WorkflowController implements RouteController {
   private readonly runtime: AgentRuntime;
   private readonly toolRegistry: ToolRegistry;
   private readonly augmentationIndexer: AugmentationIndexer;

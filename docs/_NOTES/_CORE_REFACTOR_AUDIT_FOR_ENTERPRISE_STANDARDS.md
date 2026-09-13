@@ -208,10 +208,10 @@ Your `/runs/:id/events` endpoint delegates entirely to `controller.streamRunEven
 
 ### Conceptual Blueprint for `startRun` and `streamRunEvents`
 
-Here is an architectural blueprint of how your `AiCoreController` should implement these two specific functions to honor those criteria:
+Here is an architectural blueprint of how your `WorkflowController` should implement these two specific functions to honor those criteria:
 
 ```typescript
-export class AiCoreController {
+export class WorkflowController {
   // ... dependencies injected via constructor (engine, store, logger)
 
   async startRun(req: Request, res: Response): Promise<void> {
@@ -317,7 +317,7 @@ await this.sessionStore.createSession(selectedAgent.id, 'anonymous')
 
 **The Problem:** Hardcoding the user identifier to `'anonymous'` breaks the compliance and audit requirements of enterprise software platforms. It should actively pull the authenticated `userRef` extracted via the router's identity context to trace run lifecycles.
 
-Your current `AiCoreController` contains strong architectural primitives—such as clean client-disconnect tracking (`attachAbortOnClose`), a slide-window rate limiter (`consumeRateLimit`), and historical replay handling via `Last-Event-ID` (`streamRunEvents`).
+Your current `WorkflowController` contains strong architectural primitives—such as clean client-disconnect tracking (`attachAbortOnClose`), a slide-window rate limiter (`consumeRateLimit`), and historical replay handling via `Last-Event-ID` (`streamRunEvents`).
 
 However, when audited against your **new LangGraph orchestration model**, your **v2 AgentEvent schemas**, and **enterprise-grade standards**, this controller file reveals severe vulnerabilities and immediate code-breaking structural conflicts.
 
