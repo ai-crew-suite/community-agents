@@ -42,7 +42,9 @@ describe('API Route Network Schema Invariants', () => {
       const result = CreateEmbeddingsSchema.safeParse(invalidPayload);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain('query is required');
+        // FIX (2532): Added safe optional chaining access guard fallback string
+        const message = result.error.issues[0]?.message ?? '';
+        expect(message).toContain('query is required');
       }
     });
   });
@@ -52,7 +54,9 @@ describe('API Route Network Schema Invariants', () => {
       const result = DeleteEmbeddingsSchema.safeParse({ entityFilter: {} });
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain('source is required');
+        // FIX (2532): Added safe optional chaining access guard fallback string
+        const message = result.error.issues[0]?.message ?? '';
+        expect(message).toContain('source is required');
       }
     });
   });

@@ -38,7 +38,7 @@ import type {
   WorkflowDefinition,
 } from '@ai-crew-suite/plugin-kernel-node';
 import type { AgentRuntime } from '../runtime';
-import type { WorkflowController } from '../service/controller';
+import type { WorkflowController } from '../api/controller';
 
 /**
  * Plugin configuration for the `ai` root config section.

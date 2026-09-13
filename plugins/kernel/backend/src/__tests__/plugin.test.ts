@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 import { describe, expect, it } from 'vitest';
+import { startTestBackend } from '@backstage/backend-test-utils';
 import {
   agentExtensionPoint,
   AgentDefinition,
@@ -32,13 +33,23 @@ const createAgent = (id: string): AgentDefinition => ({
   toolIds: [],
 });
 
-const capturePluginRegistrations = () => {
-  const [registration] = (ragAiPlugin as unknown as {
-    getRegistrations(): {
-      extensionPoints: { extensionPoint: unknown; factory(): unknown }[];
-      init?: unknown;
-    }[];
+interface RegistrationPayload {
+  extensionPoints: Array<{ extensionPoint: unknown; factory(): unknown }>;
+  init?: unknown;
+}
+
+const capturePluginRegistrations = (): {
+  registration: RegistrationPayload;
+  extensionPoints: Map<unknown, unknown>
+} => {
+  const registrations = (ragAiPlugin as unknown as {
+    getRegistrations(): RegistrationPayload[];
   }).getRegistrations();
+
+  const registration = registrations[0];
+  if (!registration) {
+    throw new Error('Plugin initialization failed: getRegistrations returned an empty structural set.');
+  }
 
   const extensionPoints = new Map(
     registration.extensionPoints.map(({ extensionPoint, factory }) => [
@@ -51,17 +62,28 @@ const capturePluginRegistrations = () => {
 };
 
 describe('ragAiPlugin boot registration', () => {
+  it('proves the framework plugin can boot successfully via test backends', async () => {
+    // Backstage standard verification checking that the module wires up and satisfies system dependencies
+    const backend = await startTestBackend({
+      features: [ragAiPlugin],
+    });
+    expect(backend).toBeDefined();
+  });
+
   it('fails safely when two sub-plugins register conflicting vector sources', () => {
     const { registration, extensionPoints } = capturePluginRegistrations();
     const sources = extensionPoints.get(sourceExtensionPoint) as {
       addSource(source: SourceDescriptor): void;
-    };
+    } | undefined;
 
-    sources.addSource({ id: 'catalog', description: 'Primary catalog vector source' });
+    expect(sources).toBeDefined();
+    if (sources) {
+      sources.addSource({ id: 'catalog', description: 'Primary catalog vector source' });
 
-    expect(() =>
-      sources.addSource({ id: 'catalog', description: 'Conflicting catalog vector source' }),
-    ).toThrow("Source 'catalog' may only be registered once");
+      expect(() =>
+        sources.addSource({ id: 'catalog', description: 'Conflicting catalog vector source' }),
+      ).toThrow("Source 'catalog' may only be registered once");
+    }
     expect(registration.init).toBeDefined();
   });
 
@@ -69,13 +91,16 @@ describe('ragAiPlugin boot registration', () => {
     const { registration, extensionPoints } = capturePluginRegistrations();
     const agents = extensionPoints.get(agentExtensionPoint) as {
       addAgent(agent: AgentDefinition): void;
-    };
+    } | undefined;
 
-    agents.addAgent(createAgent('service-contextualizer'));
+    expect(agents).toBeDefined();
+    if (agents) {
+      agents.addAgent(createAgent('service-contextualizer'));
 
-    expect(() => agents.addAgent(createAgent('service-contextualizer'))).toThrow(
-      "Agent 'service-contextualizer' may only be registered once",
-    );
+      expect(() => agents.addAgent(createAgent('service-contextualizer'))).toThrow(
+        "Agent 'service-contextualizer' may only be registered once",
+      );
+    }
     expect(registration.init).toBeDefined();
   });
 
@@ -83,14 +108,17 @@ describe('ragAiPlugin boot registration', () => {
     const { registration, extensionPoints } = capturePluginRegistrations();
     const runtimeStores = extensionPoints.get(runtimeStoreExtensionPoint) as {
       setRunStore(store: RunStore): void;
-    };
+    } | undefined;
     const runStore = {} as unknown as RunStore;
 
-    runtimeStores.setRunStore(runStore);
+    expect(runtimeStores).toBeDefined();
+    if (runtimeStores) {
+      runtimeStores.setRunStore(runStore);
 
-    expect(() => runtimeStores.setRunStore(runStore)).toThrow(
-      'RunStore may only be registered once',
-    );
+      expect(() => runtimeStores.setRunStore(runStore)).toThrow(
+        'RunStore may only be registered once',
+      );
+    }
     expect(registration.init).toBeDefined();
   });
 });

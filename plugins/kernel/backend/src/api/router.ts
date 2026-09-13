@@ -31,12 +31,20 @@ export const sourceValidator = (
   next: NextFunction
 ) => {
   const source = req.params['source'];
+
+  if (!source || typeof source !== 'string') {
+    return res.status(422).json({
+      message: 'The source path parameter is required and must be a valid string.',
+    });
+  }
+
   if (!sourceRegistry.has(source) && source !== 'all') {
     const supportedSources = sourceRegistry.list().map(it => it.id).join(', ');
     return res.status(422).json({
       message: `Only ${supportedSources} are currently supported as AI assistant query sources.`,
     });
   }
+
   return next();
 };
 

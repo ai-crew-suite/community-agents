@@ -23,7 +23,7 @@ import type {
 type CheckpointTuple = [id: string, nextNode: string | undefined, state: unknown];
 
 /**
- * Adapter from the AI Core `CheckpointStore` v2 contract to LangGraph's
+ * Adapter from the AI Core `CheckpointStore` contract to LangGraph's
  * `BaseCheckpointSaver` interface. `thread_id = runId`; `put` is idempotent on
  * (runId, seq) so engine retries cannot double-write.
  */

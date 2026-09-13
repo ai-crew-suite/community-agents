@@ -48,7 +48,7 @@ export interface ApprovalAuthorizer {
 export const createApprovalAuthorizer = (
   mode: 'default' | 'compliance',
 ): ApprovalAuthorizer => ({
-  authorize: async ({ agentId, runId, identity }) => {
+  authorize: async ({ agentId: _agentId, runId: _runId, identity: _identity }) => {
     // Default mode: any authenticated caller may approve. Compliance mode would
     // call the compliance module scoped to the specific exception/mutation class.
     return mode === 'compliance' ? false : true;

@@ -13,8 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import type { SourceRegistry } from '@ai-crew-suite/plugin-kernel-node';
+import { LoggerService } from '@backstage/backend-plugin-api';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type {
+  SourceRegistry,
+  AgentDefinition,
+  WorkflowDefinition,
+} from '@ai-crew-suite/plugin-kernel-node';
 import type {
   AiBackendConfig,
   AiBackendServiceOptions,
@@ -24,7 +29,7 @@ import type {
 } from '../types';
 import { AgentRuntime } from '../runtime/AgentRuntime';
 import { GraphExecutor } from '../runtime/GraphExecutor';
-import { WorkflowController } from './controller';
+import { WorkflowController } from '../api/controller';
 
 /**
  * Creates a mutable in-memory source registry used during backend assembly.
@@ -44,7 +49,11 @@ export const createSourceRegistry = (): SourceRegistry => {
   };
 };
 
-function resolveSourceRegistry(sourceRegistry: SourceRegistry, config: AiBackendServiceOptions['config'], logger: AiBackendServiceOptions['logger']): SourceRegistry {
+function resolveSourceRegistry(
+  sourceRegistry: SourceRegistry, 
+  _config: AiBackendServiceOptions['config'], 
+  logger: LoggerService
+): SourceRegistry {
   const sources = sourceRegistry.list();
   if (sources.length === 0) {
     logger.warn('No sources registered for the AI backend');
@@ -66,18 +75,25 @@ function resolveRuntimeDependencies(tools: ToolMap): { augmentationIndexer: unkn
   return { augmentationIndexer, retrievalPipeline };
 }
 
-function validateResolvedAgents(agents: Map<string, unknown>, models: Map<string, unknown>, toolRegistry: unknown, workflows: Map<string, unknown>, tools: Record<string, unknown>): void {
-  const availableToolIds = new Set(Object.keys(tools));
+/**
+ * Fully typed boot-time safeguard validating structural alignment of system components.
+ */
+function validateResolvedAgents(
+  agents: Map<string, AgentDefinition>, 
+  models: Map<string, BaseChatModel>, 
+  workflows: Map<string, WorkflowDefinition>, 
+  tools: ToolMap
+): void {
   for (const agent of agents.values()) {
-    if (!models.has((agent as { modelRef: string }).modelRef)) {
-      throw new Error(`Agent '${(agent as { id: string }).id}' references unknown model '${(agent as { modelRef: string }).modelRef}'`);
+    if (!models.has(agent.modelRef)) {
+      throw new Error(`Agent '${agent.id}' references unknown model registry entity key '${agent.modelRef}'`);
     }
-    if ((agent as { workflowRef?: string }).workflowRef && !workflows.has((agent as { workflowRef: string }).workflowRef)) {
-      throw new Error(`Agent '${(agent as { id: string }).id}' references unknown workflow runner '${(agent as { workflowRef: string }).workflowRef}'`);
+    if (agent.workflowRef && !workflows.has(agent.workflowRef)) {
+      throw new Error(`Agent '${agent.id}' references unknown workflow runner definition handle '${agent.workflowRef}'`);
     }
-    for (const toolId of (agent as { toolIds: string[] }).toolIds) {
-      if (!availableToolIds.has(toolId)) {
-        throw new Error(`Agent '${(agent as { id: string }).id}' references unknown tool '${toolId}'`);
+    for (const toolId of agent.toolIds) {
+      if (!tools.has(toolId)) {
+        throw new Error(`Agent '${agent.id}' references unknown registered capability tool '${toolId}'`);
       }
     }
   }
@@ -111,6 +127,8 @@ export function createAiBackendServices(
   if (agents.size === 0) {
     logger.warn('No agents registered at AI backend factory');
   }
+
+  validateResolvedAgents(agents, models, workflowDefinitions, tools);
 
   const runtime = new AgentRuntime(
     agents,

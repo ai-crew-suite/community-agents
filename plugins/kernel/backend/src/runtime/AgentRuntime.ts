@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { trace } from '@opentelemetry/api';
+import { trace, type Span } from '@opentelemetry/api';
 import type {
   AgentDefinition,
   AgentEvent,
@@ -24,6 +24,8 @@ import type {
   RunContext,
 } from '@ai-crew-suite/plugin-kernel-node';
 import { GraphExecutor } from './GraphExecutor';
+import { ToolExecutor } from './ToolExecutor';
+import { ModelExecutor } from './ModelExecutor';
 
 type RuntimeContext = Omit<RunContext, 'model' | 'systemPrompt'> & {
   model: unknown;
@@ -83,7 +85,18 @@ export class AgentRuntime {
 
       try {
         const runContext = this.createRunContext(ctx, agent);
-        const events = this.executor.run(agent, input, runContext);
+        const events = this.executor.run(
+          agent,
+          {
+            runId: input.runId,
+            query: input.input.query,
+            source: input.input.source,
+            entityFilter: input.input.entityFilter,
+            sessionId: input.input.sessionId,
+          },
+          runContext
+        );
+
         for await (const event of events) {
           const budgetError = await this.processRunEvent(input, ctx, event, state, runSpan);
           yield event;
@@ -121,14 +134,22 @@ export class AgentRuntime {
     yield { type: 'done', data: { runId } };
   }
 
-  private createRunContext(_ctx: RuntimeContext, agent: AgentDefinition): {
-    toolExecutorFactory: (nodeName: string) => unknown;
-    modelExecutorFactory: () => unknown;
+  private createRunContext(_ctx: RuntimeContext, _agent: AgentDefinition): {
+    toolExecutorFactory: (nodeName: string) => ToolExecutor;
+    modelExecutorFactory: () => ModelExecutor;
     checkpointStore?: unknown;
   } {
     return {
-      toolExecutorFactory: (_nodeName) => undefined,
-      modelExecutorFactory: () => undefined,
+      toolExecutorFactory: (_nodeName) => ({
+        invoke: async () => ({ toolId: _nodeName, output: {}, summary: '' })
+      } as unknown as ToolExecutor),
+
+      modelExecutorFactory: () => ({
+        invoke: async () => '',
+        stream: async function* () {},
+        forTier() { return this; }
+      } as unknown as ModelExecutor),
+
       checkpointStore: undefined,
     };
   }
@@ -153,7 +174,7 @@ export class AgentRuntime {
     ctx: RuntimeContext,
     event: AgentEvent,
     state: RunProcessingState,
-    runSpan: ReturnType<typeof trace.getTracer>['startSpan'],
+    runSpan: Span,
   ): Promise<AgentEvent | undefined> {
     runSpan.setAttribute('ai.usage.input', event.type === 'usage' ? event.data.input : 0);
     if (event.type === 'usage') {

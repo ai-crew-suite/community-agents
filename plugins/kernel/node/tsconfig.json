@@ -1,4 +1,7 @@
 {
   "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "../../../dist-types/plugins/kernel/node"
+  },
   "references": []
 }

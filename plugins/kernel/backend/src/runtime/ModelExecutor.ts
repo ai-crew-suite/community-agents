@@ -65,11 +65,11 @@ export class ModelExecutor {
   }): AsyncIterable<{ text?: string; usage?: { input: number; output: number; total: number } }> {
     const { ref, model } = this.resolveModel();
     const prompt = this.redactor?.apply(input.messages[0]?.content ?? '') ?? input.messages[0]?.content ?? '';
-    // Access the model's `.stream()` with the prompt as input.
-    // The context passes the redacted prompt to the model and emits token events.
     const stream = await model.stream(prompt as string);
-    let usageTotal = { input: 0, output: 0, total: 0 };
+    const usageTotal = { input: 0, output: 0, total: 0 };
     const runId = 'stream';
+
+    console.debug(`[${runId}] Launching live LLM token stream targeting model reference: ${ref} on node: ${input.nodeName}`);
 
     try {
       for await (const chunk of stream as AsyncIterable<unknown>) {

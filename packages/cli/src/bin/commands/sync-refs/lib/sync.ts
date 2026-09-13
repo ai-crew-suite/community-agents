@@ -22,7 +22,7 @@ export interface PackageJson {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
-  [key: string]: unknown; // 💡 FIXED: Enforced type safety instead of using 'any'
+  [key: string]: unknown;
 }
 
 export interface PackageInfo {
@@ -58,8 +58,8 @@ export function parseCommentedJson<T = Record<string, unknown>>(jsonString: stri
  * Recursively locates leaf packages containing package.json
  */
 export function findPackages(
-  dir: string, 
-  repoRoot: string, 
+  dir: string,
+  repoRoot: string,
   packageMaps = new Map<string, PackageInfo>()
 ): Map<string, PackageInfo> {
   if (!fs.existsSync(dir)) return packageMaps;

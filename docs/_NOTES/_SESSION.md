@@ -70,3 +70,4 @@ Use code with caution.
 - **The Problem:** While fault isolation is good, treating *all* errors identically obscures critical runtime infrastructure problems.
 - **The Risk:** If a network call fails due to a temporary network blip, returning `undefined` is appropriate. However, if it fails due to a **database connection failure**, an **expired authorization token**, or an **out-of-memory fatal crash**, swallowing the exception and returning `undefined` misleads the orchestration engine into thinking the tool completed with "empty data," rather than failing due to platform issues.
 - **The Fix:** Differentiate your errors. Catch and handle transient operational errors safely, but explicitly re-throw system-level anomalies (such as authentication failures or memory exhaustion tokens) to allow the orchestration runtime to halt the execution immediately.
+

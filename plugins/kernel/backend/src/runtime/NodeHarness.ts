@@ -15,9 +15,11 @@
  */
 
 import { trace } from '@opentelemetry/api';
-import type { AgentEvent, WorkflowNode, WorkflowNodeInput } from '@ai-crew-suite/plugin-kernel-node';
-import { NodeError } from '@ai-crew-suite/plugin-kernel-node';
-import type { EventMapper } from './EventMapper';
+import {
+  NodeError,
+  type WorkflowNode,
+  type WorkflowNodeInput,
+} from '@ai-crew-suite/plugin-kernel-node';
 import type { Redactor } from './Redactor';
 
 type ZodLikeSchema<T> = { parse(value: unknown): T };
