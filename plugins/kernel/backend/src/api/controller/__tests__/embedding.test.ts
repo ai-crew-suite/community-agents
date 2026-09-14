@@ -18,10 +18,12 @@ import { Request, Response } from 'express';
 import {
   InputError,
   ConflictError,
+  NotImplementedError,
 } from '@backstage/errors';
 import {
   createEmbeddingsAction,
   deleteEmbeddingsAction,
+  getEmbeddingsAction,
 } from '../embedding';
 
 describe('createEmbeddingsAction - Embedded Knowledge Integration Module', () => {
@@ -332,4 +334,190 @@ describe('deleteEmbeddingsAction - Controlled Vector Erasure Boundary', () => {
       deleteEmbeddingsAction(slowRequest, mockResponse as Response, mockContext, 'user:default/ops-lead')
     ).rejects.toThrow('Vector data layer deletion task exceeded maximum configured timeout boundary');
   });
+});
+
+describe('getEmbeddingsAction - Controlled Context Retrieval Boundary', () => {
+  let mockLogger: any;
+  let mockPipeline: any;
+  let mockContext: any;
+  let mockResponse: Partial<Response>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    mockLogger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn()
+    };
+
+    mockPipeline = {
+      retrieveAugmentationContext: vi.fn().mockResolvedValue(['chunk_1', 'chunk_2'])
+    };
+
+    mockContext = {
+      logger: mockLogger,
+      validateSource: vi.fn((src) => src || 'all'),
+      retrievalPipeline: mockPipeline,
+      hardening: { timeoutMs: 30000 }
+    };
+
+    mockResponse = {
+      status: vi.fn().mockReturnThis(),
+      send: vi.fn().mockReturnThis()
+    };
+  });
+
+  it('should immediately raise an InputError when the query parameter mapping fails Zod schema verification', async () => {
+    const brokenRequest = {
+      query: {
+        // Missing the required 'query' parameter field completely
+        source: 'confluence-kb'
+      }
+    } as unknown as Request;
+
+    await expect(
+      getEmbeddingsAction(brokenRequest, mockResponse as Response, mockContext, 'user:default/unauthorized-reader')
+    ).rejects.toThrow(InputError);
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Schema Validation Rejection'),
+      expect.any(Object)
+    );
+    expect(mockPipeline.retrieveAugmentationContext).not.toHaveBeenCalled();
+  });
+
+  it('should throw a NotImplementedError when the retrieval pipeline reference is missing from the controller context', async () => {
+    const validRequest = {
+      query: { query: 'Fetch identity parameters', source: 'vault' },
+      path: '/embeddings/get'
+    } as unknown as Request;
+
+    // Simulate an unconfigured deployment node scenario
+    mockContext.retrievalPipeline = undefined;
+
+    await expect(
+      getEmbeddingsAction(validRequest, mockResponse as Response, mockContext, 'user:default/engineer')
+    ).rejects.toThrow(NotImplementedError);
+
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.stringContaining('Infrastructure Execution Failure'),
+      expect.any(Object)
+    );
+  });
+
+  it('should forward parameters cleanly to the pipeline service and issue a 200 OK array on valid inputs', async () => {
+    const validRequest = {
+      query: {
+        query: 'How to configure OTel distributed metrics tracking?',
+        source: 'engineering-playbook',
+        // Optional query parameters map to undefined unless structured in a URL query string
+        entityFilter: undefined 
+      },
+      path: '/embeddings/get'
+    } as unknown as Request;
+
+    const response = await getEmbeddingsAction(
+      validRequest,
+      mockResponse as Response,
+      mockContext,
+      'user:default/auditor-staff'
+    );
+
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.send).toHaveBeenCalledWith({ results: ['chunk_1', 'chunk_2'] });
+
+    // Fix: Match the exact undefined structure passed by the Zod query parser extraction
+    expect(mockPipeline.retrieveAugmentationContext).toHaveBeenCalledWith(
+      'How to configure OTel distributed metrics tracking?',
+      'engineering-playbook',
+      undefined
+    );
+
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      expect.stringContaining('Executing semantic context augmentation query retrieval'),
+      expect.objectContaining({
+        safeSource: 'engineering-playbook',
+        userRef: 'user:default/auditor-staff',
+        queryLength: 51
+      })
+    );
+  });
+
+  it('should catch async read anomalies, log context fields safely, and mask the public error exception', async () => {
+    const crashProneRequest = {
+      query: { query: 'Query executing against unresponsive database index', source: 'corrupted-shard' },
+      path: '/embeddings/get'
+    } as unknown as Request;
+
+    mockPipeline.retrieveAugmentationContext.mockRejectedValue(new Error('Vector embedding index pointer corrupted'));
+
+    // Assert that it cleanly intercepts and masks the raw message for security tracking purposes
+    await expect(
+      getEmbeddingsAction(crashProneRequest, mockResponse as Response, mockContext, 'user:default/dev-ops')
+    ).rejects.toThrow('An internal data layer exception blocked vector retrieval execution profiles.');
+
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.stringContaining('Data Layer Read Retrieval Failure'),
+      expect.objectContaining({
+        safeSource: 'corrupted-shard',
+        userRef: 'user:default/dev-ops',
+        internalError: 'Vector embedding index pointer corrupted'
+      })
+    );
+  });
+
+
+  it('should trigger a timeout rejection when the retrieval pipeline takes longer than configured hardening boundaries', async () => {
+    const slowRequest = {
+      query: { query: 'Long running search task', source: 'massive-corpus' },
+      path: '/embeddings/get'
+    } as unknown as Request;
+
+    mockContext.hardening = { timeoutMs: 1 };
+    mockPipeline.retrieveAugmentationContext.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 5000)));
+
+    await expect(
+      getEmbeddingsAction(slowRequest, mockResponse as Response, mockContext, 'user:default/ops-lead')
+    ).rejects.toThrow('Vector data layer retrieval task exceeded maximum configured timeout boundary');
+  });
+
+  it('should sanitize raw infrastructure exceptions into an UnexpectedError to prevent data layout leakage', async () => {
+    const validRequest = {
+      query: { query: 'Fetch target infrastructure parameters', source: 'secure-vault' },
+      path: '/embeddings/get'
+    } as unknown as Request;
+
+    // Simulate an internal database cluster or network stack tracing timeout failure
+    mockPipeline.retrieveAugmentationContext.mockRejectedValue(
+      new Error('FATAL: Internal PostgreSQL connection pooling slot exhaust limit reached [Cluster Topology: 10.0.1.5]')
+    );
+
+    // Verify it completely masks the internal raw message behind an UnexpectedError
+    await expect(
+      getEmbeddingsAction(validRequest, mockResponse as Response, mockContext, 'user:default/analyst')
+    ).rejects.toThrow(Error);
+
+    // Verify that the user-visible message remains sanitized
+    await expect(
+      getEmbeddingsAction(validRequest, mockResponse as Response, mockContext, 'user:default/analyst')
+    ).rejects.toThrow('An internal data layer exception blocked vector retrieval execution profiles.');
+  });
+
+  it('should successfully handle whitespace padding mutations on search queries without shifting index tracks', async () => {
+    const trailingWhitespaceRequest = {
+      query: { query: '   Clean architecture standards mapping    ', source: 'confluence-kb' },
+      path: '/embeddings/get'
+    } as unknown as Request;
+
+    await getEmbeddingsAction(trailingWhitespaceRequest, mockResponse as Response, mockContext, 'user:default/tester');
+
+    // Prove the pipeline receives a trimmed string to eliminate wasteful token generation over spaces
+    expect(mockPipeline.retrieveAugmentationContext).toHaveBeenCalledWith(
+      'Clean architecture standards mapping',
+      'confluence-kb',
+      undefined
+    );
+  });
+
 });

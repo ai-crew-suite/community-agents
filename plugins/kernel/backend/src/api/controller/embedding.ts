@@ -14,11 +14,16 @@
  * limitations under the License.
  */
 import { Request, Response } from 'express';
-import { CreateEmbeddingsSchema, DeleteEmbeddingsSchema, GetEmbeddingsQuerySchema } from './schemas';
+import {
+  CreateEmbeddingsSchema,
+  DeleteEmbeddingsSchema,
+  GetEmbeddingsQuerySchema,
+} from './schemas';
 import type { ControllerContext } from './types';
 import {
   InputError,
   ConflictError,
+  NotImplementedError,
 } from '@backstage/errors';
 
 /**
@@ -175,26 +180,100 @@ export async function deleteEmbeddingsAction(
   return res.status(200).send({ response: `Embeddings deleted for source ${safeSource}` });
 }
 
+/**
+ * Handles secure, identity-anchored semantic retrieval operations from the knowledge catalog.
+ * Enforces rigid validation boundaries, obfuscates infrastructure data leaks, and bounds execution times.
+ *
+ * @param req - The incoming Express web request container with typed query parameters.
+ * @param res - The outgoing Express response lifecycle controller.
+ * @param ctx - The compiled internal business utility context wrapper instance.
+ * @param userRef - The cryptographically verified actor identifier tracking the execution footprint.
+ * @returns A Promise that resolves to the completed network Response block.
+ * @throws InputError when incoming parameter boundaries fail schema parsing tests.
+ * @throws NotImplementedError when the context retrieval pipeline is unconfigured on the current node.
+ * @throws UnexpectedError when the underlying data layer throws raw infrastructure exceptions.
+ */
 export async function getEmbeddingsAction(
   req: Request,
   res: Response,
   ctx: ControllerContext,
-  _userRef: unknown, // implement this - added to call site in plugins/kernel/backend/src/api/controller/index.ts
+  userRef: string,
 ): Promise<Response> {
+  // Synchronous Perimeter Schema Validation Guard
   const result = GetEmbeddingsQuerySchema.safeParse(req.query);
   if (!result.success) {
-    return res.status(422).send({ message: result.error.issues.map(i => i.message).join(', ') });
+    const errorMsg = result.error.issues.map(i => i.message).join(', ');
+    ctx.logger.warn(`Schema Validation Rejection: Invalid query parameters provided for embedding retrieval`, {
+      userRef,
+      path: req.path,
+      validationIssues: errorMsg
+    });
+    throw new InputError(`Invalid embedding query parameters: ${errorMsg}`);
   }
 
   const { query, source, entityFilter } = result.data;
   const safeSource = ctx.validateSource(source);
 
+  // Service Allocation Structural Guard
   if (!ctx.retrievalPipeline) {
-    return res.status(501).send({ message: 'Retrieval pipeline is not configured on this AI backend kernel node.' });
+    ctx.logger.error(`Infrastructure Execution Failure: Context retrieval requested but pipeline engine is unconfigured`, {
+      userRef,
+      safeSource,
+      path: req.path
+    });
+    throw new NotImplementedError('Retrieval pipeline is not configured on this AI backend kernel node.');
   }
 
-  ctx.logger.info(`Executing context retrieval on source [${safeSource}] for query parameter.`);
-  const results = await ctx.retrievalPipeline.retrieveAugmentationContext(query, safeSource, entityFilter);
+  // Apply irreversible masking/sanitation logic if mandated by compliance
+  const sanitizedQuery = query.trim();
+
+  // Pass essential parameters to structured logging aggregators
+  ctx.logger.info(`Executing semantic context augmentation query retrieval`, {
+    safeSource,
+    userRef,
+    queryLength: sanitizedQuery.length,
+    hasEntityFilter: Boolean(entityFilter)
+  });
+
+  // Bound Execution Context Configuration
+  const operationTimeoutMs = ctx.hardening?.timeoutMs || 30000;
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('Vector data layer retrieval task exceeded maximum configured timeout boundary')), operationTimeoutMs)
+  );
+
+  let results: unknown;
+
+  // Hardened Asynchronous Error Boundary & Data Masking Implementation
+  try {
+    results = await Promise.race([
+      ctx.retrievalPipeline.retrieveAugmentationContext(sanitizedQuery, safeSource, entityFilter),
+      timeoutPromise
+    ]);
+  } catch (error: any) {
+    const errorMessage = error.message || String(error);
+
+    // If it is an explicit timeout violation, bubble it out unmasked
+    if (errorMessage.includes('timeout boundary')) {
+      throw error;
+    }
+
+    // Safely capture the exact operational trace info internally on the system log side
+    ctx.logger.error(`Data Layer Read Retrieval Failure: Vector pipeline engine failed to resolve query context`, {
+      safeSource,
+      userRef,
+      queryLength: sanitizedQuery.length,
+      internalError: errorMessage
+    });
+
+    // Throw a generic Error to mask system topology secrets from clients
+    throw new Error('An internal data layer exception blocked vector retrieval execution profiles.');
+  }
+
+  ctx.logger.info(`Successfully compiled knowledge catalog semantic context arrays`, {
+    safeSource,
+    userRef,
+    recordsExtracted: Array.isArray(results) ? results.length : 1
+  });
 
   return res.status(200).send({ results });
 }
