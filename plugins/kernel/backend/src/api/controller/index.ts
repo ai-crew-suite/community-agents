@@ -41,10 +41,8 @@ import {
   startRunAction,
   streamRunEventsAction,
 } from './run';
-import {
-  triggerRunAction,
-  webhookRunAction,
-} from './event';
+import { triggerRunAction } from './trigger';
+import { webhookRunAction } from './webhook';
 
 /**
  * Registered Backstage permissions for the AI workflow runtime engine.

@@ -21,11 +21,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { WorkflowController } from '../index';
 import * as embeddingModule from '../embedding';
 import * as runModule from '../run';
-import * as eventModule from '../event';
+import * as triggerModule from '../trigger';
+import * as webhookModule from '../webhook';
 
 vi.mock('../../embedding');
 vi.mock('../run');
-vi.mock('../event');
+vi.mock('../trigger');
+vi.mock('../webhook');
 
 
 describe('WorkflowController - Base Scaffolding & Safe Typing', () => {
@@ -296,8 +298,8 @@ describe('WorkflowController - Orchestration & Infrastructure Routing Layers', (
       });
       mockPermissionsService.authorize.mockResolvedValue([{ result: AuthorizeResult.ALLOW }]);
 
-      // 5. Spy on the correct event.ts entrypoint
-      const spy = vi.spyOn(eventModule, 'triggerRunAction').mockResolvedValue(mockResponse as any);
+      // Fix: Spy on the isolated triggerModule reference directly
+      const spy = vi.spyOn(triggerModule, 'triggerRunAction').mockResolvedValue(mockResponse as any);
       const mockRequest = {} as any;
 
       await controller.triggerRun(mockRequest, mockResponse as Response);
@@ -316,8 +318,8 @@ describe('WorkflowController - Orchestration & Infrastructure Routing Layers', (
       });
       mockPermissionsService.authorize.mockResolvedValue([{ result: AuthorizeResult.ALLOW }]);
 
-      // 6. Spy on the correct event.ts entrypoint
-      const spy = vi.spyOn(eventModule, 'webhookRunAction').mockResolvedValue(mockResponse as any);
+      // Fix: Spy on the isolated webhookModule reference directly
+      const spy = vi.spyOn(webhookModule, 'webhookRunAction').mockResolvedValue(mockResponse as any);
       const mockRequest = {} as any;
 
       await controller.webhookRun(mockRequest, mockResponse as Response);
