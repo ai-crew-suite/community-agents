@@ -31,11 +31,13 @@ export type RunRecord = {
   /** Optional session associated with the run. */
   sessionId?: string;
   /** Current lifecycle status for the run. */
-  status: 'running' | 'paused' | 'done' | 'error';
+  status: 'initialized' | 'running' | 'paused' | 'done' | 'error';
   /** Optional trigger source that started the run. */
   trigger?: string;
   /** Optional idempotency key used to deduplicate run creation. */
   idempotencyKey?: string;
+  /** Mandatory timestamp tracking when the run structure was initialized. */
+  createdAt: string;
 };
 
 /**

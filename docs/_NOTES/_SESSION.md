@@ -23,6 +23,16 @@ Then, let's generate a comprehensive unit test suite for this code block. As we 
 
 We have strict rules against casting to any or using any types in production code. In general, any type cast is heavily scrutinized and needs to be avoided. We prefer using generics or correctly fixing types - this is a greenfield refactor and we want to do it correctly.
 
+## Follow-Up Prompt
+
+Let's analyze our code and update it to be suitable for highly regulated enterprise environments. What hardening are we missing? Let's add it.
+
+Anything we're missing in the implementation code?
+
+Let's analyze our test cases and make sure we're implementing a thorough and enterprise-ready test suite. What edge cases are we missing?
+
+Any other test cases that should be in our suite?
+
 ## Implementing Accounting
 
 Analysis of Current State: `plugins/kernel/node/src/types/telemetry.ts`

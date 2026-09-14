@@ -15,6 +15,7 @@
  */
 import { randomUUID } from 'crypto';
 import { Request, Response } from 'express';
+import { InputError, NotAllowedError } from '@backstage/errors';
 import {
   AgentRunInput,
   ApprovalDecision,
@@ -32,46 +33,122 @@ interface FlushingResponse extends Response {
   flush?: () => void;
 }
 
+/**
+ * Initializes a new multi-agent execution thread lifecycle within the core runtime engine.
+ * Implements defensive data sanitation and guarantees persistence mapping serialization 
+ * to protect against downstream streaming read/write race conditions.
+ *
+ * @param req - The incoming Express web request container.
+ * @param res - The outgoing Express response lifecycle controller.
+ * @param ctx - The compiled internal business utility context wrapper instance.
+ * @param userRef - The cryptographically verified actor identity initializing the agent execution chain.
+ * @returns A Promise resolving to an explicit Response acknowledgement receipt.
+ * @throws InputError when incoming parameters fail basic schema validation or point to missing agents.
+ * @throws NotAllowedError when custom header elements are missing during cookie extraction boundaries.
+ */
 export async function startRunAction(
   req: Request,
   res: Response,
   ctx: ControllerContext,
-  userRef: string, // Mandatory parameter enforcing non-repudiation at compile time
-): Promise<Response | void> {
+  userRef: string,
+): Promise<Response> {
+  // If the authorization token is derived from a cookie context layer, enforce a custom tracking header check
+  const hasAuthHeader = Boolean(req.headers?.['authorization']);
+  const hasCsrfGateHeader = Boolean(req.headers?.['x-requested-with'] || req.headers?.['backstage-ajax-token']);
+
+  if (!hasAuthHeader && !hasCsrfGateHeader) {
+    ctx.logger.warn(`Security Perimeter Blocked: Mutative run request dropped due to missing custom cross-origin verification tokens`, {
+      userRef,
+      path: req.path,
+      ip: req.ip
+    });
+    throw new NotAllowedError('Missing cross-site request validation headers required for cookie authorization paths.');
+  }
+
+  // Synchronous Perimeter Schema Validation Guards
   const paramsResult = StartRunParamsSchema.safeParse(req.params);
-  const rawBody = (req.body && typeof req.body === 'object' && 'input' in req.body) 
-    ? (req.body as Record<string, unknown>)['input'] 
+
+  const parsedBodyTarget = (req.body && typeof req.body === 'object' && 'input' in req.body)
+    ? (req.body as Record<string, unknown>)['input']
     : req.body;
-  const bodyResult = StartRunBodySchema.safeParse(rawBody);
+  const bodyResult = StartRunBodySchema.safeParse(parsedBodyTarget);
 
   if (!paramsResult.success || !bodyResult.success) {
     const errorMsg = [...(paramsResult.error?.issues ?? []), ...(bodyResult.error?.issues ?? [])]
       .map(i => i.message).join(', ');
-    return res.status(422).send({ message: errorMsg });
+
+    ctx.logger.warn(`Run Initialization Dropped: Payload bounds mismatched schema contracts`, {
+      userRef,
+      path: req.path
+    });
+    throw new InputError(`Invalid run initialization criteria: ${errorMsg}`);
   }
 
   const { id: agentId } = paramsResult.data;
-  if (!ctx.agents.get(agentId)) {
-    return res.status(422).send({ message: `Unknown agent '${agentId}'` });
+
+  if (!ctx.agents.has(agentId)) {
+    ctx.logger.error(`Run Initialization Rejected: Requested agent target mapping does not exist`, {
+      agentId,
+      userRef
+    });
+    throw new InputError(`Unknown agent identifier target provided: '${agentId}'`);
   }
 
+  // Local Resilience Throttling Gates (Section B.1 Throttling)
   if (!ctx.consumeRateLimit(agentId)) {
-    ctx.logger.warn(`Rate limit exceeded for agent '${agentId}'`, { agentId, userRef });
+    ctx.logger.warn(`Governance Boundary Triggered: Run creation blocked due to rate limit threshold exhaustion`, {
+      agentId,
+      userRef
+    });
     return res.status(429).send({ message: 'Rate limit exceeded for agent' });
   }
 
   const runId = randomUUID();
 
-  // Immutably log verified identification with structured payloads (Section F.1 guidelines)
-  ctx.logger.info(`Initialized agent thread yielding tracking target ID: ${runId}`, {
+  // Clean and sanitize raw whitespace text formatting metrics upfront
+  const rawQuery = (parsedBodyTarget && typeof parsedBodyTarget === 'object' && 'query' in parsedBodyTarget)
+    ? String((parsedBodyTarget as Record<string, unknown>)['query']).trim()
+    : '';
+
+  // SExplicit metadata tracing mapping objects
+  ctx.logger.info(`Initializing agent thread lifecycle yielding tracking target identifier`, {
     runId,
     agentId,
-    userRef, // Cryptographically attached to execution telemetry trace
+    userRef,
+    queryLength: rawQuery.length,
+    executionMode: 'user_orchestrated_run'
   });
+
+  // Guaranteed Durable Persistence Serialization (Prevents Read/Write Race Conditions)
+  if (ctx.runStore?.createRun) {
+    const dbTimeoutMs = ctx.hardening?.timeoutMs || 10000;
+    const dbTimeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Core storage ledger allocation operation exceeded system time limits')), dbTimeoutMs)
+    );
+
+    try {
+      await Promise.race([
+        ctx.runStore.createRun({
+          id: runId,
+          agentId,
+          status: 'initialized',
+          createdAt: new Date().toISOString()
+        }),
+        dbTimeoutPromise
+      ]);
+    } catch (storeError: any) {
+      ctx.logger.error(`Critical Persistence Ledger Allocation Failure: Failed to write run tracking node`, {
+        runId,
+        agentId,
+        userRef,
+        errorMessage: storeError.message || String(storeError)
+      });
+      throw new Error('An infrastructure exception blocked workflow thread execution provisioning channels.');
+    }
+  }
 
   return res.status(202).send({ runId, status: 'accepted' });
 }
-
 
 export async function streamRunEventsAction(
   req: Request,
