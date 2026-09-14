@@ -40,8 +40,6 @@ Goal (stop hammering a failing dependency) is right; a bespoke breaker in the no
 
 `streamRunEvents` + `Last-Event-ID` replay already exists. The gap: it replays *persisted* steps then ends — no live-tail for an in-flight run after reconnect. Adopt: after replaying steps, if run status is `running`, continue streaming live. A real correctness gap for long-running graphs; fix in the engine pass.
 
----
-
 ## Section C — Checkpointing / State Integrity
 
 ### C.1 Versioned, resumable checkpoints — ADOPT (core of the plan)
@@ -305,4 +303,3 @@ export type AgentDefinition = {
 
 Enforcement at dispatch: `ToolExecutor` knows the agent, the tool, the tool's category, and the resolved provider; a mismatch is a `tool_denied` error event, audited — same posture as allow-list and write-gating. Operators get a config mirror (`ai.agents.<id>.providers`) for installation-level overrides. This is structurally identical to how `toolIds` already scope *which tools* an agent may use; `providers` scopes *which backends* those tools may reach.
 
-### I.5 Drop `BaseLLM`

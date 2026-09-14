@@ -15,12 +15,13 @@
  */
 import { Request, Response } from 'express';
 import { CreateEmbeddingsSchema, DeleteEmbeddingsSchema, GetEmbeddingsQuerySchema } from './schemas';
-import type { ControllerContext } from '../../types';
+import type { ControllerContext } from './types';
 
 export async function createEmbeddingsAction(
   req: Request,
   res: Response,
-  ctx: ControllerContext
+  ctx: ControllerContext,
+  _userRef: unknown, // implement this - added to call site in plugins/kernel/backend/src/api/controller/index.ts
 ): Promise<Response> {
   const result = CreateEmbeddingsSchema.safeParse(req.body);
   if (!result.success) {
@@ -41,7 +42,8 @@ export async function createEmbeddingsAction(
 export async function deleteEmbeddingsAction(
   req: Request,
   res: Response,
-  ctx: ControllerContext
+  ctx: ControllerContext,
+  _userRef: unknown, // implement this - added to call site in plugins/kernel/backend/src/api/controller/index.ts
 ): Promise<Response> {
   const result = DeleteEmbeddingsSchema.safeParse(req.body);
   if (!result.success) {
@@ -61,7 +63,8 @@ export async function deleteEmbeddingsAction(
 export async function getEmbeddingsAction(
   req: Request,
   res: Response,
-  ctx: ControllerContext
+  ctx: ControllerContext,
+  _userRef: unknown, // implement this - added to call site in plugins/kernel/backend/src/api/controller/index.ts
 ): Promise<Response> {
   const result = GetEmbeddingsQuerySchema.safeParse(req.query);
   if (!result.success) {

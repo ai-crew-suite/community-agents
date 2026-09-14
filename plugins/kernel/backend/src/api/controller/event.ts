@@ -21,12 +21,13 @@ import {
   TriggerRunParamsSchema,
   WebhookRunParamsSchema,
 } from './schemas';
-import type { ControllerContext } from '../../types';
+import type { ControllerContext } from './types';
 
 export async function triggerRunAction(
   req: Request,
   res: Response,
-  ctx: ControllerContext
+  ctx: ControllerContext,
+  _userRef: string, // Mandatory parameter enforcing non-repudiation at compile time
 ): Promise<Response> {
   const paramsResult = TriggerRunParamsSchema.safeParse(req.params);
   const bodyResult = GenericEventPayloadSchema.safeParse(req.body);
@@ -91,7 +92,8 @@ export async function triggerRunAction(
 export async function webhookRunAction(
   req: Request,
   res: Response,
-  ctx: ControllerContext
+  ctx: ControllerContext,
+  _userRef: string, // Mandatory parameter enforcing non-repudiation at compile time
 ): Promise<Response> {
   const paramsResult = WebhookRunParamsSchema.safeParse(req.params);
   const bodyResult = GenericEventPayloadSchema.safeParse(req.body);

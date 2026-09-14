@@ -16,17 +16,17 @@
 import { LoggerService } from '@backstage/backend-plugin-api';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type {
-  SourceRegistry,
   AgentDefinition,
+  HardeningOptions,
+  SourceRegistry,
   WorkflowDefinition,
 } from '@ai-crew-suite/plugin-kernel-node';
 import type {
-  AiBackendConfig,
   AiBackendServiceOptions,
   AiBackendServices,
-  HardeningOptions,
   ToolMap,
-} from '../types';
+} from './types';
+import type { AiBackendConfig } from '../types';
 import { AgentRuntime } from '../runtime/AgentRuntime';
 import { GraphExecutor } from '../runtime/GraphExecutor';
 import { WorkflowController } from '../api/controller';

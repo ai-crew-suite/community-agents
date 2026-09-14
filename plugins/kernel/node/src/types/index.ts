@@ -20,6 +20,7 @@ export * from './common';
 export * from './pipelines';
 export * from './providers';
 export * from './sources';
+export * from './telemetry';
 
 // Runtime Storage and Infrastructure Drivers
 export * from './storage/runtime';

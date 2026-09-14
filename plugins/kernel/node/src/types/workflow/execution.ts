@@ -242,3 +242,55 @@ export type ModelChunk = {
   toolCalls?: { id: string; name: string; args: unknown }[];
   usage?: { input: number; output: number; total: number };
 };
+
+/**
+ * ============================================================================
+ *   HARDENING
+ * ============================================================================
+ */
+
+/**
+ * Security and resiliency configuration policies enforcing execution guardrails
+ * within highly regulated enterprise multi-agent environments. These parameters
+ * mitigate financial risk, loop conditions, and denial-of-service vector scenarios
+ * by establishing deterministic compute limits.
+ */
+export interface HardeningOptions {
+  /**
+   * The absolute maximum time duration allowed for an entire workflow run execution
+   * before forced termination. Prevents dangling agent runtime instances from consuming
+   * infinite platform worker threads.
+   */
+  readonly timeoutMs?: number;
+
+  /**
+   * The total number of permitted retry actions executed by an agent step when a
+   * recoverable fault occurs.
+   */
+  readonly maxRetries?: number;
+
+  /**
+   * The starting base time configuration used by automated exponential backoff algorithms
+   * between retry attempts.
+   */
+  readonly retryBackoffMs?: number;
+
+  /**
+   * The cryptographic threshold defining the total text token capacity consumable during
+   * a single workflow run execution. Serves as an essential protection barrier against
+   * data exfiltration loops and high unexpected inference bills.
+   */
+  readonly maxTotalTokens?: number;
+
+  /**
+   * The absolute maximum runtime threshold allowed for any individual step or execution
+   * block in isolation.
+   */
+  readonly maxNodeDurationMs?: number;
+
+  /**
+   * The strict maximum frequency threshold restricting request calls allowed down to
+   * third-party endpoints within a one-minute window.
+   */
+  readonly rateLimitPerMinute?: number;
+}

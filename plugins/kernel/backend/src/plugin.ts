@@ -67,7 +67,7 @@ export const ragAiPlugin = createBackendPlugin({
     const triggers: TriggerBinding[] = [];
     const workflowDefinitions = new Map<string, WorkflowDefinition>();
     const customValidationRules: ValidationRule[] = [];
-    
+
     const runtimeStores: {
       sessionStore?: SessionStore;
       checkpointStore?: CheckpointStore;
@@ -202,7 +202,6 @@ export const ragAiPlugin = createBackendPlugin({
             logger,
             config,
             sourceRegistry: services.sourceRegistry,
-            // Greenfield Goal: services.controller implements RouteController perfectly
             controller: services.controller,
           }),
         );

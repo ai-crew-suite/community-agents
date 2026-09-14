@@ -987,9 +987,10 @@ __metadata:
     "@backstage/backend-defaults": "backstage:^"
     "@backstage/backend-plugin-api": "backstage:^"
     "@backstage/config": "backstage:^"
+    "@backstage/plugin-permission-common": "backstage:^"
     "@jest/globals": "npm:^30.5.1"
     "@langchain/core": "catalog:langchain-core"
-    "@langchain/langgraph": "npm:^1.4.14"
+    "@langchain/langgraph": "npm:^1.4.15"
     "@opentelemetry/api": "npm:^1.9.1"
     "@types/compression": "npm:^1.8.1"
     "@types/express": "npm:4.17.25"
@@ -9136,9 +9137,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@langchain/langgraph-sdk@npm:~1.10.2":
-  version: 1.10.2
-  resolution: "@langchain/langgraph-sdk@npm:1.10.2"
+"@langchain/langgraph-sdk@npm:~1.11.0":
+  version: 1.11.0
+  resolution: "@langchain/langgraph-sdk@npm:1.11.0"
   dependencies:
     "@langchain/protocol": "npm:^0.0.19"
     "@types/json-schema": "npm:^7.0.15"
@@ -9153,22 +9154,22 @@ __metadata:
       optional: true
     react-dom:
       optional: true
-  checksum: 10c0/6720b17fe2cabdecf1e987d9b901204f80606df33753d327600937c09b02c75c4fa15529a7243fab843525d031aee00464c3af776f5aa1034ca9bbf57a7ca2aa
+  checksum: 10c0/330dc7ce731c0c860b7a06d34c67ee53df17d5b7e85e60f27806a550d042d53a6d64de23484a6bbf721fa2657aa5718d8b1916702c80287894be1543aad38ef3
   languageName: node
   linkType: hard
 
-"@langchain/langgraph@npm:^1.4.14":
-  version: 1.4.14
-  resolution: "@langchain/langgraph@npm:1.4.14"
+"@langchain/langgraph@npm:^1.4.15":
+  version: 1.4.15
+  resolution: "@langchain/langgraph@npm:1.4.15"
   dependencies:
     "@langchain/langgraph-checkpoint": "npm:^1.1.5"
-    "@langchain/langgraph-sdk": "npm:~1.10.2"
+    "@langchain/langgraph-sdk": "npm:~1.11.0"
     "@langchain/protocol": "npm:^0.0.19"
     "@standard-schema/spec": "npm:1.1.0"
   peerDependencies:
     "@langchain/core": ^1.1.48
     zod: ^3.25.32 || ^4.2.0
-  checksum: 10c0/c7526ace9d581c164c05e4d153fbdb3c201c38d3143150034bd0b07c845f56fa2dba380b066c94ec2014639e31135744b02c13c89cefff98abfcac2f7fbd2cd9
+  checksum: 10c0/7f38fd116f51c42a76bf164174af8f93379f138cfc2c7e604ea2718ca9ecebfcd259277d990008cb71f6f44af8886df87f5a039e33ea9a81e2e38669d567e6ae
   languageName: node
   linkType: hard
 
