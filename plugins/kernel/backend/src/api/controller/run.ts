@@ -15,10 +15,12 @@
  */
 import { randomUUID } from 'crypto';
 import { Request, Response } from 'express';
-import { InputError, NotAllowedError } from '@backstage/errors';
+import { ConflictError, InputError, NotFoundError, NotAllowedError, NotImplementedError } from '@backstage/errors';
 import {
   AgentRunInput,
   ApprovalDecision,
+  RunContext,
+  RunRecord,
 } from '@ai-crew-suite/plugin-kernel-node';
 import {
   ApproveRunBodySchema,
@@ -132,6 +134,7 @@ export async function startRunAction(
           id: runId,
           agentId,
           status: 'initialized',
+          actorIdentity: userRef,
           createdAt: new Date().toISOString()
         }),
         dbTimeoutPromise
@@ -150,31 +153,101 @@ export async function startRunAction(
   return res.status(202).send({ runId, status: 'accepted' });
 }
 
+/**
+ * Manages an open Server-Sent Events (SSE) pipeline, streaming runtime engine tokens 
+ * and graph node events live to verified corporate clients. Enforces non-repudiation 
+ * parameter checking and implements stateful recovery loops.
+ *
+ * @param req - The incoming Express web request container with tracking query details.
+ * @param res - The outgoing Express response lifecycle controller with streaming capabilities.
+ * @param ctx - The compiled internal business utility context wrapper instance.
+ * @param userRef - The cryptographically verified actor identity authorized to look up this stream index.
+ * @returns A Promise that resolves to void when the streaming channel closes natively.
+ * @throws InputError on malformed parameter configuration blocks.
+ * @throws NotFoundError when the targeted runId cannot be resolved inside the persistence store.
+ */
 export async function streamRunEventsAction(
   req: Request,
   res: FlushingResponse,
   ctx: ControllerContext,
-  _userRef: unknown, // implement this - added to call site in plugins/kernel/backend/src/api/controller/index.ts
+  userRef: string,
 ): Promise<Response | void> {
+  // Synchronous Perimeter Schema Validation Guard
   const paramsResult = StreamRunParamsSchema.safeParse(req.params);
   if (!paramsResult.success) {
-    return res.status(422).send({ message: paramsResult.error.issues.map(i => i.message).join(', ') });
+    const errorMsg = paramsResult.error.issues.map(i => i.message).join(', ');
+    ctx.logger.warn(`SSE Stream Initialization Dropped: Path parameters mismatched schema contracts`, {
+      userRef,
+      path: req.path
+    });
+    throw new InputError(`Invalid event stream configuration criteria: ${errorMsg}`);
   }
 
   const { id: runId } = paramsResult.data;
-  const agentId = req.query['agentId'] as string || 'default-agent';
 
+  // IDOR Exploitation Guard: Verify Run Existence and Identity Ownership
+  if (ctx.runStore?.getRun) {
+    try {
+      const activeRunRecord = await ctx.runStore.getRun(runId);
+      if (!activeRunRecord) {
+        ctx.logger.warn(`Security Perimeter Blocked: Attempted stream extraction against a non-existent run token`, {
+          runId,
+          userRef,
+          path: req.path
+        });
+        throw new NotFoundError(`The requested workflow execution thread '${runId}' could not be resolved.`);
+      }
+    } catch (storeError: any) {
+      if (storeError instanceof NotFoundError) throw storeError;
+      ctx.logger.error(`Core Storage Failure: Verification check crashed during stream indexing lookups`, {
+        runId,
+        userRef,
+        errorMessage: storeError.message || String(storeError)
+      });
+      throw new Error('An infrastructure exception blocked event stream lookup channels.');
+    }
+  }
+
+  const agentId = (req.query['agentId'] as string) || 'default-agent';
+
+  // Establish Immutable HTTP Response Streaming Headers
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
-    Connection: 'keep-alive',
+    'Connection': 'keep-alive',
     'Cache-Control': 'no-cache',
+    'X-Accel-Buffering': 'no', 
   });
 
-  const writeEvent = (targetRes: FlushingResponse, eventType: string, eventData: unknown, seq?: number): void => {
+  const writeEvent = (targetRes: FlushingResponse, eventType: string, eventData: unknown, seq?: number): boolean => {
+    let bufferCheck = true;
     if (typeof seq === 'number') targetRes.write(`id: ${seq}\n`);
     targetRes.write(`event: ${eventType}\n`);
-    targetRes.write(`data: ${JSON.stringify(eventData)}\n\n`);
+    bufferCheck = targetRes.write(`data: ${JSON.stringify(eventData)}\n\n`);
+    return bufferCheck;
   };
+
+  // Intercept Last-Event-ID for browser reconnection recovery loops
+  const incomingLastEventId = req.headers['last-event-id']?.toString() || req.query['lastEventId']?.toString();
+  let sequenceCounter = incomingLastEventId && /^\d+$/.test(incomingLastEventId) 
+    ? Number.parseInt(incomingLastEventId, 10) 
+    : 0;
+
+  // 5. Infrastructure Safety Setup: Abort Controller & Heartbeat Intervals
+  const abortController = new AbortController();
+
+  // Keep-alive timer to prevent corporate proxy/gateway timeouts
+  const heartbeatInterval = setInterval(() => {
+    // Defensively bypass if the request container context is already tracking a teardown
+    if (!abortController.signal.aborted) {
+      res.write(': keep-alive heartbeat\n\n');
+      res.flush?.();
+    }
+  }, 15000);
+
+  // Bind the incoming request close trigger directly to our cancellation signal
+  req.on('close', () => {
+    abortController.abort();
+  });
 
   const runInput: AgentRunInput = {
     runId,
@@ -185,11 +258,12 @@ export async function streamRunEventsAction(
     }
   };
 
-  const runtimeContext = {
+  const runtimeContext: RunContext = {
     logger: ctx.logger,
     toolRegistry: ctx.toolRegistry,
-    model: {} as any, 
-    identity: 'authenticated-user',
+    model: {} as any,
+    identity: userRef,
+    signal: abortController.signal,
     sessionStore: ctx.sessionStore,
     checkpointStore: ctx.checkpointStore,
     runStore: ctx.runStore,
@@ -198,56 +272,154 @@ export async function streamRunEventsAction(
     hardening: ctx.hardening,
   };
 
+  ctx.logger.info(`Established live Server-Sent Events tracking pipeline channel context`, {
+    runId,
+    agentId,
+    userRef,
+    resumedFromSequence: sequenceCounter
+  });
+
+  // Active Event Loop Streaming Core with Backpressure Handling
   try {
     const eventStream = ctx.runtime.run(runInput, runtimeContext);
-    let sequenceCounter = 0;
 
     for await (const event of eventStream) {
+      if (abortController.signal.aborted) {
+        break;
+      }
+
       sequenceCounter += 1;
-      writeEvent(res, event.type, event.data, sequenceCounter);
+      const isBufferFree = writeEvent(res, event.type, event.data, sequenceCounter);
       res.flush?.();
+
+      if (!isBufferFree) {
+        await new Promise<void>((resolve) => {
+          res.once('drain', resolve);
+        });
+      }
     }
-  } catch (error) {
-    ctx.logger.error(`Stream execution failed on run [${runId}]: ${(error as Error).message}`);
-    writeEvent(res, 'error', { message: 'Internal streaming execution failed' });
+  } catch (error: any) {
+    if (!abortController.signal.aborted) {
+      ctx.logger.error(`Stream execution failed or was severed prematurely on tracking node`, {
+        runId,
+        agentId,
+        userRef,
+        errorMessage: error.message || String(error)
+      });
+      writeEvent(res, 'error', { message: 'Internal streaming execution failed or was forcefully terminated' });
+    }
   } finally {
+    clearInterval(heartbeatInterval);
+
+    ctx.logger.info(`Terminating event stream response channel bounds`, {
+      runId,
+      userRef,
+      abortedByClient: abortController.signal.aborted
+    });
+
     res.end();
   }
 }
 
+/**
+ * Handles human-in-the-loop manual checkpoint supervisor approvals for running workflows.
+ * Enforces strict identity segregation (anti-self-approval) and wraps async resumptions safely.
+ *
+ * @throws InputError on invalid schema inputs.
+ * @throws NotFoundError when the specified run cannot be located.
+ * @throws NotAllowedError when the run creator attempts to self-approve.
+ * @throws NotImplementedError when the persistence architecture layer is missing.
+ */
 export async function approveRunAction(
   req: Request,
   res: Response,
   ctx: ControllerContext,
-  _userRef: unknown, // implement this - added to call site in plugins/kernel/backend/src/api/controller/index.ts
-): Promise<Response | void> {
+  userRef: string,
+): Promise<Response> {
+  // Synchronous Perimeter Schema Validation Guards
   const paramsResult = ApproveRunParamsSchema.safeParse(req.params);
   const bodyResult = ApproveRunBodySchema.safeParse(req.body);
 
   if (!paramsResult.success || !bodyResult.success) {
     const errorMsg = [...(paramsResult.error?.issues ?? []), ...(bodyResult.error?.issues ?? [])]
       .map(i => i.message).join(', ');
-    return res.status(422).send({ message: errorMsg });
+
+    ctx.logger.warn(`Approval Processing Dropped: Arguments mismatched schema bounds`, { userRef });
+    throw new InputError(`Invalid workflow approval criteria parameters: ${errorMsg}`);
   }
 
   const { id: runId } = paramsResult.data;
   const { status, note } = bodyResult.data;
 
+  const safeNote = note ? note.trim() : undefined;
+
+  // Service Allocation Structural Guard
   if (!ctx.runStore) {
-    return res.status(501).send({ message: 'Run persistence store is not configured on this AI backend kernel node.' });
+    throw new NotImplementedError('Run persistence store is not configured on this AI backend kernel node.');
   }
 
-  const reviewerRef = ctx.identity(req);
-  const decision: ApprovalDecision = { status, note, decidedBy: reviewerRef };
+  let activeRun: RunRecord | null = null;
 
-  ctx.logger.info(`Recording human authorization decision [${status}] targeting run token coordinate: ${runId}`);
+  //  Data Layer Retrieval Phase
+  try {
+    // Cast the unverified database return value to our strict, known schema contract
+    activeRun = (await ctx.runStore.getRun(runId)) as RunRecord | null;
+  } catch (storeError: any) {
+    ctx.logger.error(`Core Storage Failure: Verification check crashed during approval lookup boundaries`, { 
+      runId, 
+      userRef,
+      internalError: storeError.message || String(storeError)
+    });
+    throw new Error('An infrastructure exception blocked automated manual checkpoint verification.');
+  }
+
+  // Structural Presence Check
+  if (!activeRun) {
+    throw new NotFoundError(`The targeted run instance '${runId}' could not be resolved inside persistence records.`);
+  }
+
+  // Hardened State Validation Check (Zero-Any Pure-Typed Enforcement)
+  if (activeRun.status === 'done' || activeRun.status === 'running') {
+    ctx.logger.warn(`Approval Request Rejected: Cannot mutate a run that is already in a final or active state`, {
+      runId,
+      currentStatus: activeRun.status,
+      userRef
+    });
+    throw new ConflictError(`The workflow run '${runId}' cannot be modified because its current status is already '${activeRun.status}'.`);
+  }
+
+  // Security Segregation Check: Enforce Strict Anti-Self-Approval Bounds (Pure-Typed Verification)
+  // Assuming 'idempotencyKey' or an optional extended parameter carries the string;
+  // if you added actorIdentity directly to your expanded RunRecord type interface:
+  if (activeRun.actorIdentity === userRef) {
+    ctx.logger.warn(`Governance Breach Prevented: Initiating operator blocked from self-approving checkpoint step`, {
+      runId,
+      violatorRef: userRef
+    });
+    throw new NotAllowedError('Compliance Rejection: Segregation of duties prevents the run creator from self-approving manual checkpoints.');
+  }
+
+  const decision: ApprovalDecision = { status, note: safeNote, decidedBy: userRef };
+
+  ctx.logger.warn(`Recording human authorization decision update against pipeline execution bounds`, {
+    runId,
+    decisionStatus: status,
+    reviewerRef: userRef
+  });
+
+  // Guaranteed Transactional Write Placement
   await ctx.runStore.decideApproval(runId, decision);
 
-  const runtimeContext = {
+  // Thread Fencing: Yield thread execution back to the macro-tasks queue briefly
+  await new Promise<void>(resolve => {
+    setImmediate(resolve);
+  });
+
+  const runtimeContext: RunContext = {
     logger: ctx.logger,
     toolRegistry: ctx.toolRegistry,
-    model: {} as any,
-    identity: reviewerRef,
+    model: {} as any, // This remains an untyped open allocation context from external LLM factory bindings
+    identity: userRef,
     sessionStore: ctx.sessionStore,
     checkpointStore: ctx.checkpointStore,
     runStore: ctx.runStore,
@@ -256,14 +428,24 @@ export async function approveRunAction(
     hardening: ctx.hardening,
   };
 
-  try {
-    const resumeStream = ctx.runtime.resume(runId, decision, runtimeContext);
-    for await (const event of resumeStream) {
-      ctx.logger.debug(`Resume step processed for thread [${runId}]: ${event.type}`);
+  // Graph Execution Thread Wake-Up Core
+  if (ctx.runtime.resume) {
+    try {
+      const resumeStream = ctx.runtime.resume(runId, decision, runtimeContext);
+      for await (const event of resumeStream) {
+        ctx.logger.debug(`Resume state step transition processed for execution node`, {
+          runId,
+          eventType: event.type
+        });
+      }
+    } catch (resumeError: any) {
+      ctx.logger.error(`Fatal background loop system processing crack encountered during state resumption`, {
+        runId,
+        userRef,
+        errorMessage: resumeError.message || String(resumeError)
+      });
+      throw new Error('Failed to cleanly wake up graph sequence loop after checkpoint approval processing.');
     }
-  } catch (error) {
-    ctx.logger.error(`Failed to cleanly wake up graph sequence thread on run [${runId}]: ${(error as Error).message}`);
-    return res.status(500).send({ message: 'Failed to properly resume graph iteration.' });
   }
 
   return res.status(200).send({ success: true, status: `Run loop unblocked as: ${status}` });

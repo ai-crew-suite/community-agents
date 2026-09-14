@@ -37,7 +37,7 @@ yarn turbo run build --filter=@ai-crew-suite/plugin-kernel-backend
 
 ```bash
 yarn turbo run lint --filter=@ai-crew-suite/plugin-kernel-backend
-yarn turbo run test --filter=@ai-crew-suite/plugin-kernel-backend
+yarn turbo run test:unit --filter=@ai-crew-suite/plugin-kernel-backend
 ```
 
 ## Technical Extension Checklist

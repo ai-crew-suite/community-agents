@@ -36,6 +36,8 @@ export type RunRecord = {
   trigger?: string;
   /** Optional idempotency key used to deduplicate run creation. */
   idempotencyKey?: string;
+  /** The cryptographically verified service principal or user who initiated the run. */
+  actorIdentity: string;
   /** Mandatory timestamp tracking when the run structure was initialized. */
   createdAt: string;
 };

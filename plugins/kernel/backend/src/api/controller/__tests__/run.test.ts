@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 import { Request, Response } from 'express';
-import { InputError, NotAllowedError } from '@backstage/errors';
+import { ConflictError, InputError, NotAllowedError, NotFoundError } from '@backstage/errors';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { startRunAction } from '../run';
+import { approveRunAction, startRunAction, streamRunEventsAction } from '../run';
 
 describe('startRunAction - Core Agentic Thread Lifecycle Orchestrator', () => {
   let mockLogger: any;
@@ -316,5 +316,490 @@ describe('startRunAction - Core Agentic Thread Lifecycle Orchestrator', () => {
 
     expect(response.status).toHaveBeenCalledWith(202);
     expect(mockRunStore.createRun).toHaveBeenCalled();
+  });
+});
+
+describe('streamRunEventsAction - Live Event Stream Pipeline Gateway', () => {
+  let mockLogger: any;
+  let mockRunStore: any;
+  let mockRuntime: any;
+  let mockContext: any;
+  let mockResponse: any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    mockLogger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn()
+    };
+
+    mockRunStore = {
+      getRun: vi.fn().mockResolvedValue({ id: 'run_123', status: 'initialized' })
+    };
+
+    mockRuntime = {
+      run: vi.fn().mockImplementation(async function* () {
+        yield { type: 'token', data: { text: 'Hello' } };
+        yield { type: 'token', data: { text: ' World' } };
+      })
+    };
+
+    mockContext = {
+      logger: mockLogger,
+      runStore: mockRunStore,
+      runtime: mockRuntime,
+      toolRegistry: {},
+      hardening: {}
+    };
+
+    // Ensure all required Express streaming response event emitters are cleanly stubbed
+    mockResponse = {
+      writeHead: vi.fn(),
+      write: vi.fn().mockReturnValue(true),
+      flush: vi.fn(),
+      once: vi.fn(),
+      end: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+      send: vi.fn().mockReturnThis()
+    };
+  });
+
+  it('should immediately raise an InputError if path variables fail schema validation contracts', async () => {
+    const brokenRequest = {
+      params: { id: '' },
+      query: {},
+      headers: {},
+      on: vi.fn()
+    } as unknown as Request;
+
+    await expect(
+      streamRunEventsAction(brokenRequest, mockResponse, mockContext, 'user:default/auditor')
+    ).rejects.toThrow(InputError);
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('SSE Stream Initialization Dropped'),
+      expect.any(Object)
+    );
+  });
+
+  it('should throw a NotFoundError if the requested runId cannot be located inside the data store (IDOR Guard)', async () => {
+    const unmappedRequest = {
+      params: { id: 'run_unmapped_ghost_token' },
+      query: {},
+      headers: {},
+      on: vi.fn()
+    } as unknown as Request;
+
+    mockRunStore.getRun.mockResolvedValue(null);
+
+    await expect(
+      streamRunEventsAction(unmappedRequest, mockResponse, mockContext, 'user:default/attacker')
+    ).rejects.toThrow(NotFoundError);
+
+    expect(mockRuntime.run).not.toHaveBeenCalled();
+  });
+
+  it('should process HTTP reconnection headers, stream tokens cleanly, and issue a native end execution signal', async () => {
+    const validStreamingRequest = {
+      params: { id: 'run_123' },
+      query: { agentId: 'test-agent', query: 'Process tokens' },
+      headers: { 'last-event-id': '42' },
+      on: vi.fn() // Safe operational listener hook bypass
+    } as unknown as Request;
+
+    await streamRunEventsAction(
+      validStreamingRequest,
+      mockResponse,
+      mockContext,
+      'user:default/authorized-developer'
+    );
+
+    expect(mockResponse.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+      'Content-Type': 'text/event-stream',
+      'Connection': 'keep-alive'
+    }));
+
+    expect(mockRuntime.run).toHaveBeenCalledWith(
+      expect.objectContaining({ runId: 'run_123', agentId: 'test-agent' }),
+      expect.objectContaining({ identity: 'user:default/authorized-developer' })
+    );
+
+    expect(mockResponse.write).toHaveBeenCalledWith(expect.stringContaining('event: token'));
+    expect(mockResponse.end).toHaveBeenCalled();
+  });
+
+  describe('streamRunEventsAction Advanced Enterprise Boundary & Chaos Scenarios', () => {
+    it('should fall back safely to a zero sequence index if the client sends a malformed Last-Event-ID', async () => {
+      const corruptIdRequest = {
+        params: { id: 'run_123' },
+        query: { agentId: 'test-agent' },
+        headers: { 'last-event-id': '99_corrupt_overflow_token' },
+        on: vi.fn()
+      } as unknown as Request;
+
+      await streamRunEventsAction(corruptIdRequest, mockResponse, mockContext, 'test-user');
+
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringContaining('Established live Server-Sent Events tracking pipeline channel context'),
+        expect.objectContaining({ resumedFromSequence: 0 })
+      );
+    });
+
+    it('should engage an explicit AbortSignal and terminate underlying engine streaming if the network container closes prematurely', async () => {
+      const closedStreamingRequest = {
+        params: { id: 'run_123' },
+        query: { agentId: 'test-agent' },
+        headers: {},
+        on: vi.fn() 
+      } as unknown as Request;
+
+      let captureCloseCallback: (() => void) | undefined = undefined;
+
+      (closedStreamingRequest.on as any).mockImplementation((event: string, callback: () => void) => {
+        if (event === 'close') captureCloseCallback = callback;
+      });
+
+      // Fix: Trigger the request network closure mid-iteration inside the active streaming generator loop
+      mockRuntime.run.mockImplementation(async function* () {
+        yield { type: 'token', data: { text: 'First slice' } };
+
+        // Simulate the client dropping the connection abruptly while processing bytes
+        if (captureCloseCallback) {
+          (captureCloseCallback as () => void)();
+        }
+
+        yield { type: 'token', data: { text: 'Dangling untracked token slice' } };
+      });
+
+      // Execute and await the action promise now that the close trigger is correctly synchronized mid-stream
+      await streamRunEventsAction(
+        closedStreamingRequest,
+        mockResponse,
+        mockContext,
+        'user:default/disconnecting-tester'
+      );
+
+      // Verify the unified cleanup logs track the close termination status accurately
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringContaining('Terminating event stream response channel bounds'),
+        expect.objectContaining({ 
+          runId: 'run_123', 
+          userRef: 'user:default/disconnecting-tester', 
+          abortedByClient: true 
+        })
+      );
+    });
+
+    it('should respect network backpressure by pausing the event stream loop until a drain event is emitted', async () => {
+      const backpressureRequest = {
+        params: { id: 'run_123' },
+        query: { agentId: 'test-agent' },
+        headers: {},
+        on: vi.fn()
+      } as unknown as Request;
+
+      mockResponse.write
+        .mockReturnValueOnce(true)   // id
+        .mockReturnValueOnce(true)   // event
+        .mockReturnValueOnce(false)  // saturates network buffer data chunk
+        .mockReturnValue(true);
+
+      let triggerDrainCallback: (() => void) | undefined = undefined;
+      mockResponse.once.mockImplementation((event: string, callback: () => void) => {
+        if (event === 'drain') triggerDrainCallback = callback;
+      });
+
+      const actionPromise = streamRunEventsAction(backpressureRequest, mockResponse, mockContext, 'test-user');
+
+      await new Promise(resolve => setImmediate(resolve));
+
+      expect(triggerDrainCallback).toBeDefined();
+
+      if (triggerDrainCallback) {
+        (triggerDrainCallback as () => void)();
+      }
+
+      await actionPromise;
+      expect(mockResponse.end).toHaveBeenCalled();
+    });
+
+    it('should inject a safe error token and terminate the response cleanly if the generator crashes mid-stream', async () => {
+      const runtimeCrashRequest = {
+        params: { id: 'run_123' },
+        query: { agentId: 'test-agent' },
+        headers: {},
+        on: vi.fn()
+      } as unknown as Request;
+
+      mockRuntime.run.mockImplementation(async function* () {
+        throw new Error('Vector engine socket disconnected or timed out mid-iteration');
+      });
+
+      await streamRunEventsAction(runtimeCrashRequest, mockResponse, mockContext, 'user:default/ops-engineer');
+
+      // Verify the internal error tracking payload mapped correctly
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Stream execution failed or was severed prematurely on tracking node'),
+        expect.objectContaining({
+          runId: 'run_123',
+          errorMessage: 'Vector engine socket disconnected or timed out mid-iteration'
+        })
+      );
+
+      expect(mockResponse.write).toHaveBeenCalledWith(expect.stringContaining('event: error'));
+      expect(mockResponse.end).toHaveBeenCalled();
+    });
+  });
+});
+
+describe('approveRunAction - Supervised Checkpoint Approval Boundary', () => {
+  let mockLogger: any;
+  let mockRunStore: any;
+  let mockRuntime: any;
+  let mockContext: any;
+  let mockResponse: Partial<Response>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    mockLogger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn()
+    };
+
+    mockRunStore = {
+      getRun: vi.fn().mockResolvedValue({ id: 'run_123', actorIdentity: 'user:default/original-developer-creator' }),
+      decideApproval: vi.fn().mockResolvedValue(undefined)
+    };
+
+    mockRuntime = {
+      resume: vi.fn().mockImplementation(async function* () {
+        yield { type: 'step', data: { phase: 'exit' } };
+      })
+    };
+
+    mockContext = {
+      logger: mockLogger,
+      runStore: mockRunStore,
+      runtime: mockRuntime,
+      toolRegistry: {},
+      hardening: {}
+    };
+
+    mockResponse = {
+      status: vi.fn().mockReturnThis(),
+      send: vi.fn().mockReturnThis()
+    };
+  });
+
+  it('should immediately raise an InputError if input params or body contents breach Zod validation parameters', async () => {
+    const invalidRequest = {
+      params: { id: '' },
+      body: {}
+    } as unknown as Request;
+
+    await expect(
+      approveRunAction(invalidRequest, mockResponse as Response, mockContext, 'user:default/reviewer')
+    ).rejects.toThrow(InputError);
+  });
+
+  it('should throw a NotAllowedError if the executing reviewer is identical to the run initiator (Anti-Self-Approval Check)', async () => {
+    const maliciousSelfApprovalRequest = {
+      params: { id: 'run_123' },
+      body: { status: 'approved', note: 'Looks good to me!' }
+    } as unknown as Request;
+
+    await expect(
+      approveRunAction(maliciousSelfApprovalRequest, mockResponse as Response, mockContext, 'user:default/original-developer-creator')
+    ).rejects.toThrow(NotAllowedError);
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Governance Breach Prevented'),
+      expect.any(Object)
+    );
+  });
+
+  it('should pass parameters forward, map the verified identity, and wake up execution streams on successful approvals', async () => {
+    const validApprovalRequest = {
+      params: { id: 'run_123' },
+      body: { status: 'approved', note: 'Compliance metrics validated and cleared.' }
+    } as unknown as Request;
+
+    const response = await approveRunAction(
+      validApprovalRequest,
+      mockResponse as Response,
+      mockContext,
+      'user:default/independent-compliance-manager'
+    );
+
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.send).toHaveBeenCalledWith({
+      success: true,
+      status: 'Run loop unblocked as: approved'
+    });
+
+    expect(mockRunStore.decideApproval).toHaveBeenCalledWith(
+      'run_123',
+      expect.objectContaining({ status: 'approved', decidedBy: 'user:default/independent-compliance-manager' })
+    );
+
+    expect(mockRuntime.resume).toHaveBeenCalledWith(
+      'run_123',
+      expect.any(Object),
+      expect.objectContaining({ identity: 'user:default/independent-compliance-manager' })
+    );
+  });
+
+  it('should process macro-task queue drainage sequentially using setImmediate before invoking engine resumptions', async () => {
+    const validApprovalRequest = {
+      params: { id: 'run_123' },
+      body: { status: 'approved', note: 'Clear sequence index boundaries' }
+    } as unknown as Request;
+
+    const executionOrderTraces: string[] = [];
+
+    // Spy on the database write and engine resumption hooks to track precise operation timing
+    mockRunStore.decideApproval.mockImplementation(async () => {
+      executionOrderTraces.push('DATABASE_WRITE_COMMITTED');
+    });
+
+    mockRuntime.resume.mockImplementation(async function* () {
+      executionOrderTraces.push('ENGINE_RESUMPTION_WAKING');
+      yield { type: 'step', data: { phase: 'exit' } };
+    });
+
+    await approveRunAction(
+      validApprovalRequest,
+      mockResponse as Response,
+      mockContext,
+      'user:default/independent-auditor'
+    );
+
+    // Verify the database write explicitly finished and committed BEFORE the engine began its resumption loop
+    expect(executionOrderTraces).toEqual(['DATABASE_WRITE_COMMITTED', 'ENGINE_RESUMPTION_WAKING']);
+  });
+
+  it('should immediately raise a ConflictError if attempting to approve a run thread that is already marked as completed', async () => {
+    const duplicateApprovalRequest = {
+      params: { id: 'run_123' },
+      body: { status: 'approved', note: 'Attempting a redundant review signature block' }
+    } as unknown as Request;
+
+    // Simulate the database returning a run state ledger that has already concluded its execution
+    mockRunStore.getRun.mockResolvedValue({
+      id: 'run_123',
+      agentId: 'assistant-crew',
+      actorIdentity: 'user:default/original-developer-creator',
+      status: 'done', // Execution already finalized
+      createdAt: new Date().toISOString() // Satisfies required RunRecord parameter bounds
+    });
+
+    // Assert that the function throws an official Backstage ConflictError instance
+    await expect(
+      approveRunAction(duplicateApprovalRequest, mockResponse as Response, mockContext, 'user:default/reviewer')
+    ).rejects.toThrow(ConflictError);
+
+    // Assert that the specific user-facing message maps cleanly
+    await expect(
+      approveRunAction(duplicateApprovalRequest, mockResponse as Response, mockContext, 'user:default/reviewer')
+    ).rejects.toThrow("The workflow run 'run_123' cannot be modified because its current status is already 'done'.");
+
+    // Verify that the system logged the conflict warning metric to monitoring pools
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Approval Request Rejected: Cannot mutate a run that is already in a final or active state'),
+      expect.objectContaining({
+        runId: 'run_123',
+        currentStatus: 'done',
+        userRef: 'user:default/reviewer'
+      })
+    );
+
+    // Verify that execution paths short-circuited and the database write/resumptions were completely bypassed
+    expect(mockRunStore.decideApproval).not.toHaveBeenCalled();
+    expect(mockRuntime.resume).not.toHaveBeenCalled();
+  });
+
+  it('should safely normalize and trim excess whitespace parameters from reviewer notes to preserve audit text consistency', async () => {
+    const messyNoteRequest = {
+      params: { id: 'run_123' },
+      body: { status: 'approved', note: '   \n\tManual review checkpoint cleared securely.\r\n   ' }
+    } as unknown as Request;
+
+    await approveRunAction(
+      messyNoteRequest,
+      mockResponse as Response,
+      mockContext,
+      'user:default/compliance-officer'
+    );
+
+    // Verify the decision structure passed to the database received a clean, normalized string
+    expect(mockRunStore.decideApproval).toHaveBeenCalledWith(
+      'run_123',
+      expect.objectContaining({
+        note: 'Manual review checkpoint cleared securely.'
+      })
+    );
+  });
+
+  it('should successfully process actions and track non-repudiation when initialized by an automated System Service Principal identifier', async () => {
+    const servicePrincipalRequest = {
+      params: { id: 'run_555' },
+      body: { status: 'approved', note: 'Automated background batch verification pass complete.' }
+    } as unknown as Request;
+
+    // Mock the run store to return an active run originally provisioned by an external automated worker principal
+    mockRunStore.getRun.mockResolvedValue({ 
+      id: 'run_555', 
+      agentId: 'compliance-agent',
+      status: 'paused',
+      actorIdentity: 'system:service-principal/cron-scheduler-job', // Core service principal token signature format
+      createdAt: new Date().toISOString()
+    });
+
+    // An independent service principal reviewer steps in to authorize continuation parameters
+    await approveRunAction(
+      servicePrincipalRequest,
+      mockResponse as Response,
+      mockContext,
+      'system:service-principal/independent-security-scanner'
+    );
+
+    // Verify that the supervisor audit log tracks the service principal signature cleanly
+    expect(mockRunStore.decideApproval).toHaveBeenCalledWith(
+      'run_555',
+      expect.objectContaining({
+        status: 'approved',
+        decidedBy: 'system:service-principal/independent-security-scanner'
+      })
+    );
+  });
+
+  it('should successfully record the review decision to the ledger and return a 200 status code even if runtime.resume is un-implemented', async () => {
+    const basicRecordRequest = {
+      params: { id: 'run_123' },
+      body: { status: 'rejected', note: 'Security requirements unmet.' }
+    } as unknown as Request;
+
+    // Simulate an engine or third-party workflow context that lacks the optional resume executor function hook
+    mockContext.runtime.resume = undefined;
+
+    const response = await approveRunAction(
+      basicRecordRequest,
+      mockResponse as Response,
+      mockContext,
+      'user:default/independent-auditor'
+    );
+
+    expect(response.status).toHaveBeenCalledWith(200);
+    
+    // Proves that even without an active resumption engine stream, the audit ledger transaction is fully written and preserved
+    expect(mockRunStore.decideApproval).toHaveBeenCalledWith(
+      'run_123',
+      expect.objectContaining({ status: 'rejected', decidedBy: 'user:default/independent-auditor' })
+    );
   });
 });
