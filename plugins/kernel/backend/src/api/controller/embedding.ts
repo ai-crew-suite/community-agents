@@ -16,7 +16,10 @@
 import { Request, Response } from 'express';
 import { CreateEmbeddingsSchema, DeleteEmbeddingsSchema, GetEmbeddingsQuerySchema } from './schemas';
 import type { ControllerContext } from './types';
-import { InputError } from '@backstage/errors';
+import {
+  InputError,
+  ConflictError,
+} from '@backstage/errors';
 
 /**
  * Executes vector or indexing metadata asset additions inside the system knowledge catalog.
@@ -84,26 +87,92 @@ export async function createEmbeddingsAction(
   return res.status(201).send({ response: `Embeddings created for source ${safeSource}` });
 }
 
-
+/**
+ * Handles the secure deletion of specific vector embedding records from the knowledge catalog.
+ * Enforces identity-anchored audit tracking and wraps underlying persistence operations in strict exception gates.
+ *
+ * @param req - The incoming Express web request container.
+ * @param res - The outgoing Express response lifecycle controller.
+ * @param ctx - The compiled internal business utility context wrapper instance.
+ * @param userRef - The cryptographically verified actor identifier tracking the execution footprint.
+ * @returns A Promise that resolves to the completed network Response block.
+ * @throws InputError when incoming parameter boundaries fail schema parsing tests.
+ */
 export async function deleteEmbeddingsAction(
   req: Request,
   res: Response,
   ctx: ControllerContext,
-  _userRef: unknown, // implement this - added to call site in plugins/kernel/backend/src/api/controller/index.ts
+  userRef: string,
 ): Promise<Response> {
+  // Structural Schema Guard Evaluation
   const result = DeleteEmbeddingsSchema.safeParse(req.body);
   if (!result.success) {
-    return res.status(422).send({ message: result.error.issues.map(i => i.message).join(', ') });
+    const errorMsg = result.error.issues.map(i => i.message).join(', ');
+    ctx.logger.warn(`Schema Validation Rejection: Invalid data payload provided for embedding deletion`, {
+      userRef,
+      path: req.path,
+      validationIssues: errorMsg
+    });
+    throw new InputError(`Invalid embedding deletion criteria: ${errorMsg}`);
   }
 
   const { source, entityFilter } = result.data;
   const safeSource = ctx.validateSource(source);
 
-  ctx.logger.info(`Deleting embeddings for source ${safeSource}`);
-  await ctx.augmentationIndexer.deleteEmbeddings(safeSource, entityFilter);
-  ctx.logger.info(`Deleted embeddings for source ${safeSource}`);
+  // Pass essential caller metadata identifiers to the structured audit log
+  ctx.logger.warn(`Initiating catalog data destruction routine`, {
+    safeSource,
+    userRef,
+    hasEntityFilter: Boolean(entityFilter),
+    clientIp: req.ip || req.socket?.remoteAddress
+  });
 
-  return res.status(201).send({ response: `Embeddings deleted for source ${safeSource}` });
+  // Bound Execution Context Configuration
+  const operationTimeoutMs = ctx.hardening?.timeoutMs || 30000; 
+
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(
+      new Error('Vector data layer deletion task exceeded maximum configured timeout boundary')),
+      operationTimeoutMs
+    )
+  );
+
+  // Hardened Asynchronous Error Boundary Implementation
+  try {
+    await Promise.race([
+      ctx.augmentationIndexer.deleteEmbeddings(safeSource, entityFilter),
+      timeoutPromise
+    ]);
+  } catch (error: any) {
+    const errorMessage = error.message || String(error);
+
+    // SMap transactional locking or cluster update blocks to ConflictError
+    if (errorMessage.includes('lock') || errorMessage.includes('deadlock') || errorMessage.includes('concurrent')) {
+      ctx.logger.warn(`Database Mutative Race Condition Caught: Deletion blocked by a concurrent table lock`, {
+        safeSource,
+        userRef,
+        errorMessage
+      });
+
+      throw new ConflictError(
+        `The embedding resource '${safeSource}' is currently undergoing a structural update cycle. Please retry shortly.`
+      );
+    }
+
+    ctx.logger.error(`Data Layer Mutative Erasure Failure: Augmentation Indexer failed to purge vector entries`, {
+      safeSource,
+      userRef,
+      errorMessage
+    });
+    throw error; // Bubble up to central platform MiddlewareFactory error sanitizers cleanly
+  }
+
+  ctx.logger.info(`Successfully synchronized mutative data erasure blocks`, {
+    safeSource,
+    userRef
+  });
+
+  return res.status(200).send({ response: `Embeddings deleted for source ${safeSource}` });
 }
 
 export async function getEmbeddingsAction(

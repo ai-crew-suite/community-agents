@@ -15,8 +15,14 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Request, Response } from 'express';
-import { InputError } from '@backstage/errors';
-import { createEmbeddingsAction } from '../embedding';
+import {
+  InputError,
+  ConflictError,
+} from '@backstage/errors';
+import {
+  createEmbeddingsAction,
+  deleteEmbeddingsAction,
+} from '../embedding';
 
 describe('createEmbeddingsAction - Embedded Knowledge Integration Module', () => {
   let mockLogger: any;
@@ -178,5 +184,152 @@ describe('createEmbeddingsAction - Embedded Knowledge Integration Module', () =>
 
     // The validation failure happens before indexing, proving the indexer is safely bypassed
     expect(mockIndexer.createEmbeddings).not.toHaveBeenCalled();
+  });
+});
+
+describe('deleteEmbeddingsAction - Controlled Vector Erasure Boundary', () => {
+  let mockLogger: any;
+  let mockIndexer: any;
+  let mockContext: any;
+  let mockResponse: Partial<Response>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    mockLogger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn()
+    };
+
+    mockIndexer = {
+      deleteEmbeddings: vi.fn().mockResolvedValue(undefined)
+    };
+
+    mockContext = {
+      logger: mockLogger,
+      validateSource: vi.fn((src) => src || 'all'),
+      augmentationIndexer: mockIndexer
+    };
+
+    mockResponse = {
+      status: vi.fn().mockReturnThis(),
+      send: vi.fn().mockReturnThis()
+    };
+  });
+
+  it('should immediately raise an InputError when the input data structural layout fails basic Zod validation', async () => {
+    const brokenRequest = {
+      body: {
+        // Missing the required 'source' property field completely
+        entityFilter: { group: 'engineering' }
+      }
+    } as unknown as Request;
+
+    await expect(
+      deleteEmbeddingsAction(brokenRequest, mockResponse as Response, mockContext, 'user:default/malicious-actor')
+    ).rejects.toThrow(InputError);
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Schema Validation Rejection'),
+      expect.any(Object)
+    );
+    expect(mockIndexer.deleteEmbeddings).not.toHaveBeenCalled();
+  });
+
+  it('should safely dispatch strings to the indexer and issue a 200 OK update upon successful processing', async () => {
+    const validDeletionRequest = {
+      body: {
+        source: 'legacy-wiki-docs',
+        entityFilter: { target: 'deprecated' }
+      },
+      path: '/embeddings/delete'
+    } as unknown as Request;
+
+    const response = await deleteEmbeddingsAction(
+      validDeletionRequest,
+      mockResponse as Response,
+      mockContext,
+      'user:default/ops-engineer'
+    );
+
+    // Assert correct REST protocol semantics
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.send).toHaveBeenCalledWith({
+      response: 'Embeddings deleted for source legacy-wiki-docs'
+    });
+
+    // Verify indexer call signatures match positional assumptions perfectly
+    expect(mockIndexer.deleteEmbeddings).toHaveBeenCalledWith('legacy-wiki-docs', { target: 'deprecated' });
+
+    // Verify compliance audit footprints are tracked with explicit structured variables
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Initiating catalog data destruction routine'),
+      expect.objectContaining({
+        safeSource: 'legacy-wiki-docs',
+        userRef: 'user:default/ops-engineer'
+      })
+    );
+  });
+
+  it('should intercept async data-layer crashes, execute critical error logging, and bubble up the exception', async () => {
+    const crashProneRequest = {
+      body: {
+        source: 'protected-critical-index',
+        entityFilter: {}
+      },
+      path: '/embeddings/delete'
+    } as unknown as Request;
+
+    mockIndexer.deleteEmbeddings.mockRejectedValue(new Error('Database partition allocation breakdown'));
+
+    await expect(
+      deleteEmbeddingsAction(crashProneRequest, mockResponse as Response, mockContext, 'user:default/admin-user')
+    ).rejects.toThrow('Database partition allocation breakdown');
+
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.stringContaining('Data Layer Mutative Erasure Failure'),
+      expect.objectContaining({
+        safeSource: 'protected-critical-index',
+        userRef: 'user:default/admin-user',
+        errorMessage: 'Database partition allocation breakdown'
+      })
+    );
+  });
+
+  it('should explicitly throw a ConflictError when the data layer outputs a table deadlock exception', async () => {
+    const deadlockRequest = {
+      body: { source: 'contended-index-table', entityFilter: {} },
+      path: '/embeddings/delete'
+    } as unknown as Request;
+
+    // Simulate an unexpected transactional lock condition
+    mockIndexer.deleteEmbeddings.mockRejectedValue(new Error('Transaction serialization error: concurrent index lock deadlock encountered'));
+
+    await expect(
+      deleteEmbeddingsAction(deadlockRequest, mockResponse as Response, mockContext, 'user:default/analyst')
+    ).rejects.toThrow(ConflictError);
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Database Mutative Race Condition Caught'),
+      expect.any(Object)
+    );
+  });
+
+  it('should trigger a timeout rejection when the indexer call takes longer than the configured hardening limits', async () => {
+    const slowRequest = {
+      body: { source: 'unresponsive-massive-shards', entityFilter: {} },
+      path: '/embeddings/delete'
+    } as unknown as Request;
+
+    // Inject an explicit low timeout limit to force the timeout promise race victory
+    mockContext.hardening = { timeoutMs: 1 };
+
+    // Simulate a database loop that hangs indefinitely
+    mockIndexer.deleteEmbeddings.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 5000)));
+
+    await expect(
+      deleteEmbeddingsAction(slowRequest, mockResponse as Response, mockContext, 'user:default/ops-lead')
+    ).rejects.toThrow('Vector data layer deletion task exceeded maximum configured timeout boundary');
   });
 });
