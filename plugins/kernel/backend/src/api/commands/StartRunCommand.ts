@@ -39,7 +39,7 @@ import {
 import {
   StartRunBodySchema,
   StartRunParamsSchema,
-} from '../controller/schemas';
+} from '../schemas';
 
 type StartRunValidatedInput = {
   readonly agentId: string;

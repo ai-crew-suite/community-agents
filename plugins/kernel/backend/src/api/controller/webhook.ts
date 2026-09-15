@@ -23,7 +23,7 @@ import {
 import {
   GenericEventPayloadSchema,
   WebhookRunParamsSchema,
-} from './schemas';
+} from '../schemas';
 import type { ControllerContext } from './types';
 
 /**

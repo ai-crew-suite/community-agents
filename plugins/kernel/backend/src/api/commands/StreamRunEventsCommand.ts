@@ -38,7 +38,7 @@ import {
   StreamExecutionFunction,
   FlushingResponse,
 } from './types';
-import { StreamRunParamsSchema } from '../controller/schemas';
+import { StreamRunParamsSchema } from '../schemas';
 import { AgentRuntime } from '../../runtime/AgentRuntime';
 
 type StreamRunValidatedInput = {

@@ -18,7 +18,7 @@ import {
   CreateEmbeddingsSchema,
   DeleteEmbeddingsSchema,
   GetEmbeddingsQuerySchema,
-} from './schemas';
+} from '../schemas';
 import type { ControllerContext } from './types';
 import {
   InputError,

@@ -23,7 +23,7 @@ import {
 import {
   GenericEventPayloadSchema,
   TriggerRunParamsSchema,
-} from './schemas';
+} from '../schemas';
 import type { ControllerContext } from './types';
 
 /**

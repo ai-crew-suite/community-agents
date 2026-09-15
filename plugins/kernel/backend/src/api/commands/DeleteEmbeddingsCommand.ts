@@ -36,7 +36,7 @@ import {
   CommandContext,
   PackedRequestInput,
 } from './types';
-import { DeleteEmbeddingsSchema } from '../controller/schemas';
+import { DeleteEmbeddingsSchema } from '../schemas';
 
 type DeleteEmbeddingsValidatedInput = {
   readonly safeSource: EmbeddingsSource;

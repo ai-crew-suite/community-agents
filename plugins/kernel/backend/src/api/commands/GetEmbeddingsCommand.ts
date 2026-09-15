@@ -34,7 +34,7 @@ import {
   EntityFilterShape,
   HardeningOptions
 } from '@ai-crew-suite/plugin-kernel-node';
-import { GetEmbeddingsQuerySchema } from '../controller/schemas';
+import { GetEmbeddingsQuerySchema } from '../schemas';
 
 type GetEmbeddingsValidatedInput = {
   readonly query: string;

@@ -34,7 +34,7 @@ import {
   CommandContext,
   PackedRequestInput,
 } from './types';
-import { CreateEmbeddingsSchema } from '../controller/schemas';
+import { CreateEmbeddingsSchema } from '../schemas';
 
 type CreateEmbeddingsValidatedInput = {
   readonly query: string;

@@ -28,7 +28,7 @@ import {
   StartRunBodySchema,
   StartRunParamsSchema,
   StreamRunParamsSchema,
-} from './schemas';
+} from '../schemas';
 import type { ControllerContext } from './types';
 
 interface FlushingResponse extends Response {

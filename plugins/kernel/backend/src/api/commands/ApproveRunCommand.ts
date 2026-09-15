@@ -43,7 +43,7 @@ import {
 import {
   ApproveRunBodySchema,
   ApproveRunParamsSchema,
-} from '../controller/schemas';
+} from '../schemas';
 import { AgentRuntime } from '../../runtime/AgentRuntime';
 
 type ApproveRunValidatedInput = {

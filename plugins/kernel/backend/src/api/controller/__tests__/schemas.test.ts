@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { describe, it, expect } from 'vitest';
-import { CreateEmbeddingsSchema, DeleteEmbeddingsSchema } from '../schemas';
+import { CreateEmbeddingsSchema, DeleteEmbeddingsSchema } from '../../schemas';
 
 describe('API Route Network Schema Invariants', () => {
   describe('CreateEmbeddingsSchema', () => {
