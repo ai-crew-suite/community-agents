@@ -32,6 +32,12 @@ export const aiPermissions = {
     resourceType: 'agent',
   }),
 
+  embeddingsWrite: createPermission({
+    name: 'ai.embeddings.write',
+    attributes: {},
+    resourceType: 'embeddings',
+  }),
+
   runRead: createPermission({
     name: 'ai.run.read',
     attributes: {},
