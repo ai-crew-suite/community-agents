@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+import { createExtensionPoint } from '@backstage/backend-plugin-api';
 import {
   AgentDefinition,
   ArtifactSink,
@@ -35,7 +35,6 @@ import {
   VectorStoreDefinition,
   WorkflowDefinition,
 } from './types';
-import { createExtensionPoint } from '@backstage/backend-plugin-api';
 
 export * from './tools';
 

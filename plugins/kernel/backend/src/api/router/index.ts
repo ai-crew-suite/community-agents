@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright 2026 The AI Crew Suite Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,38 +13,53 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// plugins/kernel/backend/src/api/router/index.ts
 import express from 'express';
 import Router from 'express-promise-router';
 import { MiddlewareFactory } from '@backstage/backend-defaults/rootHttpRouter';
 import { LoggerService, HttpAuthService, PermissionsService, RootConfigService } from '@backstage/backend-plugin-api';
 import { adaptCommand } from './adaptCommand';
-
-// Import Concrete CQRS Commands
-import { StartRunCommand } from '../commands/StartRunCommand';
-import { ApproveRunCommand } from '../commands/ApproveRunCommand';
-import { StreamRunEventsCommand } from '../commands/StreamRunEventsCommand';
-
-// Import Injected Services & Stores
+import {
+  RunStore,
+  ToolRegistry,
+  SessionStore,
+  CheckpointStore,
+  ArtifactSink,
+  AuditLogSink,
+  TriggerBinding,
+  AugmentationIndexer,
+  RetrievalPipeline
+} from '@ai-crew-suite/plugin-kernel-node';
+import {
+  StartRunCommand,
+  ApproveRunCommand,
+  StreamRunEventsCommand,
+  CreateEmbeddingsCommand,
+  DeleteEmbeddingsCommand,
+  GetEmbeddingsCommand,
+  TriggerRunCommand,
+  WebhookRunCommand,
+} from '../commands';
 import { AgentRuntime } from '../../runtime/AgentRuntime';
-import { ToolRegistry, SessionStore, CheckpointStore, ArtifactSink, AuditLogSink, RunStore } from '@ai-crew-suite/plugin-kernel-node';
 
 export type RouterOptions = {
   readonly logger: LoggerService;
   readonly httpAuth: HttpAuthService;
   readonly permissions: PermissionsService;
   readonly config: RootConfigService;
-
-  // Decoupled Dependency Injection Graph
+  // Fully Wired Dependency Injection Graph
   readonly agentRuntime: AgentRuntime;
   readonly agents: Map<string, unknown>;
   readonly consumeRateLimit: (agentId: string) => boolean;
+  // Re-added sub-system store interfaces to clear missing property flags
   readonly runStore?: RunStore;
   readonly toolRegistry?: ToolRegistry;
   readonly sessionStore?: SessionStore;
   readonly checkpointStore?: CheckpointStore;
   readonly artifactSink?: ArtifactSink;
   readonly auditLogSink?: AuditLogSink;
+  readonly triggers: TriggerBinding[];
+  readonly augmentationIndexer?: AugmentationIndexer;
+  readonly retrievalPipeline?: RetrievalPipeline;
 };
 
 /**
@@ -67,7 +82,7 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
    * ============================================================================
    */
 
-  // 1. Initial Multi-Agent Workflow Initialization Track
+  // Initial Multi-Agent Workflow Initialization Track
   router.post(
     '/agents/:id/runs',
     adaptCommand(StartRunCommand, adapterDeps, [
@@ -79,7 +94,7 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
     ])
   );
 
-  // 2. Human-In-The-Loop Manual Checkpoint Supervisor Decision Track
+  // Human-In-The-Loop Manual Checkpoint Supervisor Decision Track
   router.post(
     '/runs/:id/approvals',
     adaptCommand(ApproveRunCommand, adapterDeps, [
@@ -94,7 +109,7 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
     ])
   );
 
-  // 3. Stateful Real-Time SSE Server Sent Token Streaming Track
+  // Stateful Real-Time SSE Server Sent Token Streaming Track
   router.get(
     '/runs/:id/events',
     adaptCommand(StreamRunEventsCommand, adapterDeps, [
@@ -109,8 +124,55 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
     ])
   );
 
+  router.post(
+    '/embeddings/:source',
+    adaptCommand(CreateEmbeddingsCommand, adapterDeps, [
+      options.augmentationIndexer,
+    ])
+  );
+
+  // Delete/Purge Catalog Vector Embedding Records Track
+  router.delete(
+    '/embeddings/:source',
+    adaptCommand(DeleteEmbeddingsCommand, adapterDeps, [
+      options.augmentationIndexer,
+      options.config.getOptional('ai.hardening'),
+    ])
+  );
+
+  // Semantic Context Augmentation Vector Retrieval Track
+  router.get(
+    '/embeddings/:source',
+    adaptCommand(GetEmbeddingsCommand, adapterDeps, [
+      options.retrievalPipeline,
+      options.config.getOptional('ai.hardening'),
+    ])
+  );
+
+  router.post(
+    '/triggers/:source',
+    adaptCommand(TriggerRunCommand, adapterDeps, [
+      options.agentRuntime,
+      options.triggers,
+      options.agents,
+      options.config.getOptional('ai.hardening'),
+    ])
+  );
+
+  // Public Third-Party Perimeter Webhook alert Ingestion Track
+  router.post(
+    '/webhooks/:provider',
+    adaptCommand(WebhookRunCommand, adapterDeps, [
+      options.agentRuntime,
+      options.triggers,
+      options.agents,
+      options.config.getOptional('ai.hardening'),
+    ])
+  );
+
   // Central platform error handler handles structural sanitization and serialization
   const middleware = MiddlewareFactory.create({ config: options.config, logger: options.logger });
+
   router.use(middleware.error());
 
   return router;

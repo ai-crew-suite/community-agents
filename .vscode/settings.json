@@ -42,6 +42,7 @@
     "PUSR",
     "pylint",
     "Qdrant",
+    "repudiable",
     "rerank",
     "Reranker",
     "rerankers",

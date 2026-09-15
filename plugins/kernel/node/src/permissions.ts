@@ -81,4 +81,9 @@ export const aiPermissions = {
     resourceType: 'infrastructure',
   }),
 
+  webhookIngest: createPermission({
+    name: 'ai.webhook.ingest',
+    attributes: {},
+    resourceType: 'webhook',
+  }),
 } as const;

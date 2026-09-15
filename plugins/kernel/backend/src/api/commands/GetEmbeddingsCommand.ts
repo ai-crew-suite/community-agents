@@ -25,15 +25,16 @@ import {
 import { ResourcePermission } from '@backstage/plugin-permission-common';
 import { BaseKernelCommand } from './BaseKernelCommand';
 import {
-  CommandContext,
-  PackedRequestInput,
-} from './types';
-import {
   aiPermissions,
   EmbeddingsSource,
   EntityFilterShape,
-  HardeningOptions
+  HardeningOptions,
+  RetrievalPipeline,
 } from '@ai-crew-suite/plugin-kernel-node';
+import {
+  CommandContext,
+  PackedRequestInput,
+} from './types';
 import { GetEmbeddingsQuerySchema } from '../schemas';
 
 type GetEmbeddingsValidatedInput = {
@@ -41,10 +42,6 @@ type GetEmbeddingsValidatedInput = {
   readonly safeSource: EmbeddingsSource;
   readonly entityFilter?: EntityFilterShape;
 };
-
-export interface RetrievalPipeline {
-  retrieveAugmentationContext(query: string, source: EmbeddingsSource, filter?: EntityFilterShape): Promise<unknown>;
-}
 
 export class GetEmbeddingsCommand extends BaseKernelCommand<
   GetEmbeddingsValidatedInput,

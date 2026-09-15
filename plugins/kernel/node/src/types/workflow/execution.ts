@@ -86,6 +86,18 @@ export interface WorkflowRunner {
 }
 
 /**
+ * Universal execution contract specifying the non-repudiable ingress criteria
+ * required to initialize or trigger an agentic workflow graph run context.
+ *
+ * This type acts as a core domain invariant contract shared across edge API
+ * gateways, background cron automation loops, and infrastructure triggers.
+ * It is completely decoupled from HTTP perimeter types.
+ */
+export interface WebhookRuntimeEngine {
+  run(input: AgentRunInput, context: unknown): any;
+}
+
+/**
  * ============================================================================
  *   RUN-LEVEL LIFECYCLE FACADES
  * ============================================================================
