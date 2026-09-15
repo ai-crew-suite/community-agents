@@ -13,10 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { NotAllowedError, NotFoundError, ConflictError, NotImplementedError } from '@backstage/errors';
-import { PermissionsService, BackstageCredentials } from '@backstage/backend-plugin-api';
+import {
+  ConflictError,
+  NotAllowedError,
+  NotFoundError,
+  NotImplementedError,
+} from '@backstage/errors';
+import {
+  BackstageCredentials,
+  PermissionsService,
+} from '@backstage/backend-plugin-api';
 import { ResourcePermission } from '@backstage/plugin-permission-common';
 import {
+  aiPermissions,
   ApprovalDecision,
   ArtifactSink,
   AuditLogSink,
@@ -27,9 +36,14 @@ import {
   ToolRegistry,
 } from '@ai-crew-suite/plugin-kernel-node';
 import { BaseKernelCommand } from './BaseKernelCommand';
-import { CommandContext, PackedRequestInput } from './types';
-import { aiPermissions } from '../permissions';
-import { ApproveRunBodySchema, ApproveRunParamsSchema } from '../controller/schemas';
+import {
+  CommandContext,
+  PackedRequestInput,
+} from './types';
+import {
+  ApproveRunBodySchema,
+  ApproveRunParamsSchema,
+} from '../controller/schemas';
 import { AgentRuntime } from '../../runtime/AgentRuntime';
 
 type ApproveRunValidatedInput = {
@@ -41,7 +55,10 @@ type ApproveRunValidatedInput = {
 /**
  * Concrete CQRS Command handling workflow supervisor approvals.
  */
-export class ApproveRunCommand extends BaseKernelCommand<ApproveRunValidatedInput, { success: boolean; status: string }> {
+export class ApproveRunCommand extends BaseKernelCommand<
+  ApproveRunValidatedInput,
+  { success: boolean; status: string }
+> {
   private readonly credentials: BackstageCredentials;
 
   public constructor(
@@ -67,28 +84,6 @@ export class ApproveRunCommand extends BaseKernelCommand<ApproveRunValidatedInpu
     this.credentials = credentials;
   }
 
-  protected verifyInfrastructureDependencies(): void {
-    if (!this.runStore) {
-      throw new NotImplementedError(
-        'Run persistence store is not configured on this AI backend kernel node.'
-      );
-    }
-  }
-
-  protected validate(input: PackedRequestInput, _context: CommandContext): ApproveRunValidatedInput {
-    const { paramsData, bodyData } = this.parseCombinedSchemas(
-      ApproveRunParamsSchema,
-      ApproveRunBodySchema,
-      input
-    );
-
-    return {
-      runId: paramsData.id,
-      status: bodyData.status,
-      note: bodyData.note ? bodyData.note.trim() : undefined,
-    };
-  }
-
   protected async authorize(input: ApproveRunValidatedInput, context: CommandContext): Promise<void> {
     const targetPermission = aiPermissions.agentApprove as ResourcePermission<string>;
 
@@ -111,6 +106,27 @@ export class ApproveRunCommand extends BaseKernelCommand<ApproveRunValidatedInpu
     }
   }
 
+  protected validate(input: PackedRequestInput, _context: CommandContext): ApproveRunValidatedInput {
+    const { paramsData, bodyData } = this.parseCombinedSchemas(
+      ApproveRunParamsSchema,
+      ApproveRunBodySchema,
+      input
+    );
+
+    return {
+      runId: paramsData.id,
+      status: bodyData.status,
+      note: bodyData.note ? bodyData.note.trim() : undefined,
+    };
+  }
+
+  protected verifyInfrastructureDependencies(): void {
+    if (!this.runStore) {
+      throw new NotImplementedError(
+        'Run persistence store is not configured on this AI backend kernel node.'
+      );
+    }
+  }
 
   protected async handle(
     input: ApproveRunValidatedInput,

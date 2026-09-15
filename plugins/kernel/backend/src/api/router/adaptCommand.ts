@@ -56,9 +56,11 @@ export function adaptCommand<TInput, TOutput>(
 ) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      // 1. Strict Cryptographic Identity Propagation Check via modern Backstage allow blocks
+      // Strict Cryptographic Identity Propagation Check via modern Backstage allow blocks
       const credentials = await dependencies.httpAuth.credentials(req, {
         allow: ['user', 'service'],
+        // Prevent query string leaks in reverse-proxy logs (Nginx/Cloudflare) or browser histories
+        allowLimitedAccess: false,
       });
 
       if (!credentials || !credentials.principal) {
@@ -78,14 +80,14 @@ export function adaptCommand<TInput, TOutput>(
         throw new NotAllowedError('Access Denied: Non-repudiation contract breach. Invalid actor identity serialization.');
       }
 
-      // 2. Assemble Structured Immutable Context with search-ready logging
+      // Assemble Structured Immutable Context with search-ready logging
       const context: CommandContext = {
         actorIdentity,
         createdAt: new Date().toISOString(),
         logger: dependencies.logger.child({ actorIdentity }),
       };
 
-      // 3. High-Security Compliance Extraction (Insulates against Prototype Pollution)
+      // High-Security Compliance Extraction (Insulates against Prototype Pollution)
       const safeBody = Object.create(null);
       const safeQuery = Object.create(null);
       const safeParams = Object.create(null);
@@ -108,11 +110,11 @@ export function adaptCommand<TInput, TOutput>(
         headers: headersMap,
       };
 
-      // 4. Instantiate Command via clean Injection Graph
+      // Instantiate Command via clean Injection Graph
       const commandInstance = new CommandClass(...commandArgs, credentials);
       const result = await commandInstance.execute(packedInput, context);
 
-      // 5. Greenfield Smart Response Switching Bridge
+      // Smart Response Switching Bridge
       if (typeof result === 'function') {
         await (result as StreamExecutionFunction)(res as FlushingResponse);
       } else {

@@ -13,12 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// plugins/kernel/backend/src/api/commands/StreamRunEventsCommand.ts
 import { InputError, NotAllowedError, NotFoundError, NotImplementedError } from '@backstage/errors';
-import { PermissionsService, BackstageCredentials } from '@backstage/backend-plugin-api';
+import {
+  BackstageCredentials,
+  PermissionsService,
+} from '@backstage/backend-plugin-api';
 import { ResourcePermission } from '@backstage/plugin-permission-common';
 import {
   AgentRunInput,
+  aiPermissions,
   ArtifactSink,
   AuditLogSink,
   CheckpointStore,
@@ -29,8 +32,12 @@ import {
   ToolRegistry,
 } from '@ai-crew-suite/plugin-kernel-node';
 import { BaseKernelCommand } from './BaseKernelCommand';
-import { CommandContext, PackedRequestInput, StreamExecutionFunction, FlushingResponse } from './types';
-import { aiPermissions } from '../permissions';
+import {
+  CommandContext,
+  PackedRequestInput,
+  StreamExecutionFunction,
+  FlushingResponse,
+} from './types';
 import { StreamRunParamsSchema } from '../controller/schemas';
 import { AgentRuntime } from '../../runtime/AgentRuntime';
 
@@ -42,7 +49,10 @@ type StreamRunValidatedInput = {
   readonly incomingLastEventId?: string;
 };
 
-export class StreamRunEventsCommand extends BaseKernelCommand<StreamRunValidatedInput, StreamExecutionFunction> {
+export class StreamRunEventsCommand extends BaseKernelCommand<
+StreamRunValidatedInput,
+StreamExecutionFunction
+> {
   private readonly credentials: BackstageCredentials;
 
   public constructor(
@@ -58,58 +68,14 @@ export class StreamRunEventsCommand extends BaseKernelCommand<StreamRunValidated
     credentials?: BackstageCredentials
   ) {
     super();
+
     if (!credentials) {
-      throw new NotAllowedError('Perimeter Authentication Failure: Request contains empty or unverified token principals.');
+      throw new NotAllowedError(
+        'Perimeter Authentication Failure: Request contains empty or unverified token principals.'
+      );
     }
+
     this.credentials = credentials;
-  }
-
-  protected verifyInfrastructureDependencies(): void {
-    if (!this.runStore) {
-      throw new NotImplementedError('Run persistence store is not configured on this AI backend kernel node.');
-    }
-  }
-
-  protected validate(input: PackedRequestInput, context: CommandContext): StreamRunValidatedInput {
-    const paramsResult = StreamRunParamsSchema.safeParse(input.params);
-    if (!paramsResult.success) {
-      const errorMsg = paramsResult.error.issues.map(i => i.message).join(', ');
-      context.logger.warn('SSE Stream Initialization Dropped: Path parameters mismatched schema contracts', {
-        userRef: context.actorIdentity,
-      });
-      throw new InputError(`Invalid event stream configuration criteria: ${errorMsg}`);
-    }
-
-    const { id: runId } = paramsResult.data;
-
-    // Safely parse index headers and query string components using string literal maps
-    const headersMap = input.headers as Record<string, string | string[] | undefined>;
-    const queryMap = input.query as Record<string, string | string[] | undefined>;
-
-    const agentIdParam = queryMap['agentId'];
-    const queryParam = queryMap['query'];
-    const sourceParam = queryMap['source'];
-    const lastEventIdHeader = headersMap['last-event-id'];
-    const lastEventIdQuery = queryMap['lastEventId'];
-
-    const agentId = typeof agentIdParam === 'string' ? agentIdParam : 'default-agent';
-    const query = typeof queryParam === 'string' ? queryParam : '';
-    const source = typeof sourceParam === 'string' ? sourceParam : 'all';
-
-    let incomingLastEventId: string | undefined = undefined;
-    if (typeof lastEventIdHeader === 'string') {
-      incomingLastEventId = lastEventIdHeader;
-    } else if (typeof lastEventIdQuery === 'string') {
-      incomingLastEventId = lastEventIdQuery;
-    }
-
-    return {
-      runId,
-      agentId,
-      query,
-      source,
-      incomingLastEventId,
-    };
   }
 
   protected async authorize(input: StreamRunValidatedInput, context: CommandContext): Promise<void> {
@@ -155,8 +121,57 @@ export class StreamRunEventsCommand extends BaseKernelCommand<StreamRunValidated
     }
   }
 
+  protected validate(input: PackedRequestInput, context: CommandContext): StreamRunValidatedInput {
+    const paramsResult = StreamRunParamsSchema.safeParse(input.params);
+    if (!paramsResult.success) {
+      const errorMsg = paramsResult.error.issues.map(i => i.message).join(', ');
+      context.logger.warn('SSE Stream Initialization Dropped: Path parameters mismatched schema contracts', {
+        userRef: context.actorIdentity,
+      });
+      throw new InputError(`Invalid event stream configuration criteria: ${errorMsg}`);
+    }
+
+    const { id: runId } = paramsResult.data;
+
+    // Safely parse index headers and query string components using string literal maps
+    const headersMap = input.headers as Record<string, string | string[] | undefined>;
+    const queryMap = input.query as Record<string, string | string[] | undefined>;
+
+    const agentIdParam = queryMap['agentId'];
+    const queryParam = queryMap['query'];
+    const sourceParam = queryMap['source'];
+    const lastEventIdHeader = headersMap['last-event-id'];
+    const lastEventIdQuery = queryMap['lastEventId'];
+
+    const agentId = typeof agentIdParam === 'string' ? agentIdParam : 'default-agent';
+    const query = typeof queryParam === 'string' ? queryParam : '';
+    const source = typeof sourceParam === 'string' ? sourceParam : 'all';
+
+    let incomingLastEventId: string | undefined = undefined;
+    if (typeof lastEventIdHeader === 'string') {
+      incomingLastEventId = lastEventIdHeader;
+    } else if (typeof lastEventIdQuery === 'string') {
+      incomingLastEventId = lastEventIdQuery;
+    }
+
+    return {
+      runId,
+      agentId,
+      query,
+      source,
+      incomingLastEventId,
+    };
+  }
+
+  protected verifyInfrastructureDependencies(): void {
+    if (!this.runStore) {
+      throw new NotImplementedError('Run persistence store is not configured on this AI backend kernel node.');
+    }
+  }
+
   protected async handle(input: StreamRunValidatedInput, context: CommandContext): Promise<StreamExecutionFunction> {
-    // Return a lazy execution function payload handover block to let adaptCommand handle real-time HTTP mutations safely
+    // Return a lazy execution function payload handover block to
+    // let adaptCommand handle real-time HTTP mutations safely
     return async (res: FlushingResponse): Promise<void> => {
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
@@ -167,7 +182,9 @@ export class StreamRunEventsCommand extends BaseKernelCommand<StreamRunValidated
 
       const writeEvent = (eventType: string, eventData: unknown, seq?: number): boolean => {
         if (typeof seq === 'number') res.write(`id: ${seq}\n`);
+
         res.write(`event: ${eventType}\n`);
+
         return res.write(`data: ${JSON.stringify(eventData)}\n\n`);
       };
 
@@ -177,10 +194,11 @@ export class StreamRunEventsCommand extends BaseKernelCommand<StreamRunValidated
       }
 
       const abortController = new AbortController();
-      
+
       const heartbeatInterval = setInterval(() => {
         if (!abortController.signal.aborted) {
           res.write(': keep-alive heartbeat\n\n');
+
           if (res.flush) res.flush();
         }
       }, 15000);
@@ -233,6 +251,7 @@ export class StreamRunEventsCommand extends BaseKernelCommand<StreamRunValidated
 
             sequenceCounter += 1;
             const isBufferFree = writeEvent(event.type, event.data, sequenceCounter);
+
             if (res.flush) res.flush();
 
             if (!isBufferFree) {
@@ -244,22 +263,28 @@ export class StreamRunEventsCommand extends BaseKernelCommand<StreamRunValidated
         }
       } catch (error: unknown) {
         if (!abortController.signal.aborted) {
-          context.logger.error(`Stream execution failed or was severed prematurely on tracking node`, {
-            runId: input.runId,
-            agentId: input.agentId,
-            userRef: context.actorIdentity,
-            errorMessage: error instanceof Error ? error.message : String(error),
-          });
+          context.logger.error(
+            `Stream execution failed or was severed prematurely on tracking node`,
+            {
+              runId: input.runId,
+              agentId: input.agentId,
+              userRef: context.actorIdentity,
+              errorMessage: error instanceof Error ? error.message : String(error),
+            }
+          );
+
           writeEvent('error', { message: 'Internal streaming execution failed or was forcefully terminated' });
         }
       } // Removed empty finally to address explicit clean loop tracking bounds safely
-      
+
       clearInterval(heartbeatInterval);
+
       context.logger.info(`Terminating event stream response channel bounds`, {
         runId: input.runId,
         userRef: context.actorIdentity,
         abortedByClient: abortController.signal.aborted,
       });
+
       res.end();
     };
   }

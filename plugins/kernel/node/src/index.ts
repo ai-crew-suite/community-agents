@@ -16,6 +16,7 @@
 
 // 1. Core Framework Extension Points
 export * from './extensions';
+export * from './permissions';
 
 // 2. Structural Types & Blueprints SDK
 export * from './types';

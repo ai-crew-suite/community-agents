@@ -13,15 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { InputError, NotAllowedError, ConflictError, NotImplementedError } from '@backstage/errors';
-import { PermissionsService, BackstageCredentials } from '@backstage/backend-plugin-api';
+import {
+  ConflictError,
+  InputError,
+  NotAllowedError,
+  NotImplementedError,
+} from '@backstage/errors';
+import {
+  BackstageCredentials,
+  PermissionsService,
+} from '@backstage/backend-plugin-api';
 import { ResourcePermission } from '@backstage/plugin-permission-common';
-import { RunStore, HardeningOptions, RunRecord } from '@ai-crew-suite/plugin-kernel-node';
+import {
+  aiPermissions,
+  HardeningOptions,
+  RunRecord,
+  RunStore,
+} from '@ai-crew-suite/plugin-kernel-node';
 import { randomUUID } from 'crypto';
 import { BaseKernelCommand } from './BaseKernelCommand';
-import { CommandContext, PackedRequestInput } from './types';
-import { aiPermissions } from '../permissions';
-import { StartRunBodySchema, StartRunParamsSchema } from '../controller/schemas';
+import {
+  CommandContext,
+  PackedRequestInput,
+} from './types';
+import {
+  StartRunBodySchema,
+  StartRunParamsSchema,
+} from '../controller/schemas';
 
 type StartRunValidatedInput = {
   readonly agentId: string;
@@ -56,6 +74,35 @@ StartRunValidatedInput,
     }
 
     this.credentials = credentials;
+  }
+
+  protected async authorize(input: StartRunValidatedInput, context: CommandContext): Promise<void> {
+    const targetPermission = aiPermissions.agentRun as ResourcePermission<string>;
+    const decisions = await this.permissions.authorize(
+      [{ permission: targetPermission, resourceRef: input.agentId }],
+      { credentials: this.credentials }
+    );
+
+    const [mainDecision] = decisions;
+
+    // Parity Check: Reject if array payload is completely empty
+    if (!mainDecision) {
+      context.logger.error('RBAC critical evaluation failure: Authorization response payload was completely empty');
+
+      throw new Error('Internal authorization parsing failure encountered');
+    }
+
+    if (mainDecision.result === 'DENY') {
+      context.logger.warn(
+        `RBAC violation intercepted: UserRef [${context.actorIdentity}] denied access to permission [${aiPermissions.agentRun.name}]`
+      );
+
+      throw new NotAllowedError(`Access Denied: Actor lacks required scope: ${aiPermissions.agentRun.name}`);
+    }
+
+    if (!this.consumeRateLimit(input.agentId)) {
+      throw new ConflictError('Rate limit exceeded for agent. Core capacity thresholds exhausted.');
+    }
   }
 
   protected verifyInfrastructureDependencies(): void {
@@ -153,36 +200,6 @@ StartRunValidatedInput,
       query: rawQuery,
     };
   }
-
-  protected async authorize(input: StartRunValidatedInput, context: CommandContext): Promise<void> {
-    const targetPermission = aiPermissions.agentRun as ResourcePermission<string>;
-    const decisions = await this.permissions.authorize(
-      [{ permission: targetPermission, resourceRef: input.agentId }],
-      { credentials: this.credentials }
-    );
-
-    const [mainDecision] = decisions;
-
-    // Parity Check: Reject if array payload is completely empty
-    if (!mainDecision) {
-      context.logger.error('RBAC critical evaluation failure: Authorization response payload was completely empty');
-
-      throw new Error('Internal authorization parsing failure encountered');
-    }
-
-    if (mainDecision.result === 'DENY') {
-      context.logger.warn(
-        `RBAC violation intercepted: UserRef [${context.actorIdentity}] denied access to permission [${aiPermissions.agentRun.name}]`
-      );
-
-      throw new NotAllowedError(`Access Denied: Actor lacks required scope: ${aiPermissions.agentRun.name}`);
-    }
-
-    if (!this.consumeRateLimit(input.agentId)) {
-      throw new ConflictError('Rate limit exceeded for agent. Core capacity thresholds exhausted.');
-    }
-  }
-
 
   protected async handle(input: StartRunValidatedInput, context: CommandContext): Promise<{ readonly runId: string; readonly status: string }> {
     const runId = randomUUID();
