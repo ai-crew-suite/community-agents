@@ -20,6 +20,13 @@ import { createPermission } from '@backstage/plugin-permission-common';
  * natively via type utilities to mandate structural resourceRef scopes during execution checks.
  */
 export const aiPermissions = {
+
+  /**
+   * ====================================================================
+   *   Workflow related permissions
+   * ====================================================================
+   */
+
   agentRun: createPermission({
     name: 'ai.agent.run',
     attributes: {},
@@ -32,15 +39,28 @@ export const aiPermissions = {
     resourceType: 'agent',
   }),
 
+  runRead: createPermission({
+    name: 'ai.run.read',
+    attributes: {},
+    resourceType: 'run',
+  }),
+
+  /**
+   * ====================================================================
+   *   Vector Database Embeddings related permissions
+   * ====================================================================
+   */
+
   embeddingsWrite: createPermission({
     name: 'ai.embeddings.write',
     attributes: {},
     resourceType: 'embeddings',
   }),
 
-  runRead: createPermission({
-    name: 'ai.run.read',
+  embeddingsDelete: createPermission({
+    name: 'ai.embeddings.delete',
     attributes: {},
-    resourceType: 'run',
+    resourceType: 'embeddings',
   }),
+
 } as const;

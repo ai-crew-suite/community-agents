@@ -17,41 +17,46 @@ import {
   InputError,
   NotAllowedError,
   NotImplementedError,
+  ConflictError,
 } from '@backstage/errors';
 import {
   BackstageCredentials,
   PermissionsService,
 } from '@backstage/backend-plugin-api';
+import { ResourcePermission } from '@backstage/plugin-permission-common';
 import {
   aiPermissions,
   AugmentationIndexer,
   EntityFilterShape,
-  EmbeddingsSource
+  EmbeddingsSource,
+  HardeningOptions
 } from '@ai-crew-suite/plugin-kernel-node';
-import { ResourcePermission } from '@backstage/plugin-permission-common';
 import { BaseKernelCommand } from './BaseKernelCommand';
 import {
   CommandContext,
   PackedRequestInput,
 } from './types';
-import { CreateEmbeddingsSchema } from '../controller/schemas';
+import { DeleteEmbeddingsSchema } from '../controller/schemas';
 
-type CreateEmbeddingsValidatedInput = {
-  readonly query: string;
+type DeleteEmbeddingsValidatedInput = {
   readonly safeSource: EmbeddingsSource;
   readonly entityFilter?: EntityFilterShape;
 };
 
 /**
- * Concrete CQRS Command executing vector knowledge catalog embedding additions.
+ * Concrete CQRS Command executing vector knowledge catalog embedding purges.
  * Closes the legacy controller's authorization gap via strict RBAC resource checks.
  */
-export class CreateEmbeddingsCommand extends BaseKernelCommand<CreateEmbeddingsValidatedInput, { readonly response: string; readonly count: number }> {
+export class DeleteEmbeddingsCommand extends BaseKernelCommand<
+  DeleteEmbeddingsValidatedInput,
+  { readonly response: string }
+> {
   private readonly credentials: BackstageCredentials;
 
   public constructor(
     private readonly permissions: PermissionsService,
     private readonly augmentationIndexer?: AugmentationIndexer,
+    private readonly hardening?: HardeningOptions,
     credentials?: BackstageCredentials
   ) {
     super();
@@ -77,14 +82,16 @@ export class CreateEmbeddingsCommand extends BaseKernelCommand<CreateEmbeddingsV
     if (!source || source.trim() === '' || source === 'all') {
       return 'all';
     }
+
     return source;
   }
 
   protected validate(
     input: PackedRequestInput,
     context: CommandContext
-  ): CreateEmbeddingsValidatedInput {
-    const result = CreateEmbeddingsSchema.safeParse(input.body);
+  ): DeleteEmbeddingsValidatedInput {
+    // Structural Schema Guard Validation Pass
+    const result = DeleteEmbeddingsSchema.safeParse(input.body);
 
     if (!result.success) {
       const compiledIssues: string[] = [];
@@ -100,38 +107,31 @@ export class CreateEmbeddingsCommand extends BaseKernelCommand<CreateEmbeddingsV
         : 'Unknown structural schema validation parameter mismatch.';
 
       context.logger.warn(
-        'Schema Validation Rejection: Invalid data payload provided for embedding creation',
+        'Schema Validation Rejection: Invalid data payload provided for embedding deletion',
         {
           userRef: context.actorIdentity,
         }
       );
 
-      throw new InputError(`Invalid embedding configuration criteria: ${errorMsg}`);
+      throw new InputError(`Invalid embedding deletion criteria: ${errorMsg}`);
     }
 
-    const { query, source, entityFilter } = result.data;
-
-    if (!query || query.trim() === '') {
-      context.logger.warn('Schema Validation Rejection: Query cannot be empty or consist only of whitespace characters', {
-        userRef: context.actorIdentity,
-      });
-      throw new InputError('Invalid embedding configuration criteria: Query parameter cannot be empty or consist only of whitespace.');
-    }
+    const { source, entityFilter } = result.data;
 
     const safeSource = this.validateSource(source);
 
     return {
-      query,
       safeSource,
       entityFilter: entityFilter as EntityFilterShape,
     };
   }
 
   protected async authorize(
-    input: CreateEmbeddingsValidatedInput,
+    input: DeleteEmbeddingsValidatedInput,
     context: CommandContext
   ): Promise<void> {
-    const targetPermission = aiPermissions.embeddingsWrite as ResourcePermission<string>;
+    // Perimeter Protection: Enforce explicit deletion RBAC scope
+    const targetPermission = aiPermissions.embeddingsDelete as ResourcePermission<string>;
 
     const decisions = await this.permissions.authorize(
       [{ permission: targetPermission, resourceRef: input.safeSource }],
@@ -148,37 +148,78 @@ export class CreateEmbeddingsCommand extends BaseKernelCommand<CreateEmbeddingsV
 
     if (mainDecision.result === 'DENY') {
       context.logger.warn(
-        `RBAC violation intercepted: UserRef [${context.actorIdentity}] denied access to permission [${aiPermissions.embeddingsWrite.name}]`);
+        `RBAC violation intercepted: UserRef [${context.actorIdentity}] denied access to permission [${aiPermissions.embeddingsDelete.name}]`
+      );
 
-      throw new NotAllowedError(`Access Denied: Actor lacks required scope: ${aiPermissions.embeddingsWrite.name}`);
+      throw new NotAllowedError(`Access Denied: Actor lacks required scope: ${aiPermissions.embeddingsDelete.name}`);
     }
   }
 
   protected async handle(
-    input: CreateEmbeddingsValidatedInput,
+    input: DeleteEmbeddingsValidatedInput,
     context: CommandContext
-  ): Promise<{ readonly response: string; readonly count: number }> {
+  ): Promise<{ readonly response: string }> {
     const indexer = this.augmentationIndexer!;
 
-    context.logger.info('Executing catalog knowledge vector indexing injection loop', {
-      safeSource: input.safeSource,
-      userRef: context.actorIdentity,
-      queryLength: input.query.length,
-      hasEntityFilter: Boolean(input.entityFilter),
-    });
+    context.logger.warn(
+      'Initiating catalog data destruction routine',
+      {
+        safeSource: input.safeSource,
+        userRef: context.actorIdentity,
+        hasEntityFilter: Boolean(input.entityFilter),
+      }
+    );
 
-    let writtenCount = 0;
+    // Durable Persistence Serialization via Timeout Fences
+    const hardeningTimeout = this.hardening?.timeoutMs;
+    const operationTimeoutMs = (hardeningTimeout && hardeningTimeout > 0) ? hardeningTimeout : 30000;
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(
+          new Error('Vector data layer deletion task exceeded maximum configured timeout boundary')
+        ),
+        operationTimeoutMs
+      )
+    );
 
     try {
-      writtenCount = await indexer.createEmbeddings(input.safeSource, input.entityFilter);
+      await Promise.race([
+        indexer.deleteEmbeddings(input.safeSource, input.entityFilter),
+        timeoutPromise,
+      ]);
+
     } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Enforce lowercase normalization to match uppercase/mixed string variations cleanly
+      const normalizedError = errorMessage.toLowerCase();
+
+      // Map transactional locking or cluster update blocks to ConflictError
+      if (
+        normalizedError.includes('lock') ||
+        normalizedError.includes('deadlock') ||
+        normalizedError.includes('concurrent')
+      ) {
+        context.logger.warn(
+          'Database Mutative Race Condition Caught: Deletion blocked by a concurrent table lock',
+          {
+            safeSource: input.safeSource,
+            userRef: context.actorIdentity,
+            errorMessage,
+          }
+        );
+
+        throw new ConflictError(
+          `The embedding resource '${input.safeSource}' is currently undergoing a structural update cycle. Please retry shortly.`
+        );
+      }
+
       context.logger.error(
-        'Data Layer Write Failure: Augmentation Indexer failed to synchronize vector rows',
+        'Data Layer Mutative Erasure Failure: Augmentation Indexer failed to purge vector entries',
         {
           safeSource: input.safeSource,
           userRef: context.actorIdentity,
-          queryLength: input.query.length,
-          errorMessage: error instanceof Error ? error.message : String(error),
+          errorMessage,
         }
       );
 
@@ -186,18 +227,15 @@ export class CreateEmbeddingsCommand extends BaseKernelCommand<CreateEmbeddingsV
     }
 
     context.logger.info(
-      'Successfully synchronized catalog vector data boundaries',
+      'Successfully synchronized mutative data erasure blocks',
       {
         safeSource: input.safeSource,
         userRef: context.actorIdentity,
-        querySnippet: input.query.substring(0, 30),
-        writtenCount,
       }
     );
 
     return {
-      response: `Embeddings created for source ${input.safeSource}`,
-      count: writtenCount,
+      response: `Embeddings deleted for source ${input.safeSource}`,
     };
   }
 }

@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// plugins/kernel/backend/src/api/commands/__tests__/StreamRunEventsCommand.test.ts
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { InputError, NotAllowedError, NotFoundError } from '@backstage/errors';
 import { BackstageCredentials } from '@backstage/backend-plugin-api';
