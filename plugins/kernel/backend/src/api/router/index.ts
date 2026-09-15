@@ -34,7 +34,7 @@ export type RouterOptions = {
   readonly httpAuth: HttpAuthService;
   readonly permissions: PermissionsService;
   readonly config: RootConfigService;
-  
+
   // Decoupled Dependency Injection Graph
   readonly agentRuntime: AgentRuntime;
   readonly agents: Map<string, unknown>;

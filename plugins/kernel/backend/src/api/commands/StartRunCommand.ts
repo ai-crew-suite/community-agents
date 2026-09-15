@@ -154,9 +154,8 @@ StartRunValidatedInput,
     };
   }
 
-  protected async authorize(input: StartRunValidatedInput, _context: CommandContext): Promise<void> {
+  protected async authorize(input: StartRunValidatedInput, context: CommandContext): Promise<void> {
     const targetPermission = aiPermissions.agentRun as ResourcePermission<string>;
-
     const decisions = await this.permissions.authorize(
       [{ permission: targetPermission, resourceRef: input.agentId }],
       { credentials: this.credentials }
@@ -164,7 +163,18 @@ StartRunValidatedInput,
 
     const [mainDecision] = decisions;
 
-    if (mainDecision?.result === 'DENY') {
+    // Parity Check: Reject if array payload is completely empty
+    if (!mainDecision) {
+      context.logger.error('RBAC critical evaluation failure: Authorization response payload was completely empty');
+
+      throw new Error('Internal authorization parsing failure encountered');
+    }
+
+    if (mainDecision.result === 'DENY') {
+      context.logger.warn(
+        `RBAC violation intercepted: UserRef [${context.actorIdentity}] denied access to permission [${aiPermissions.agentRun.name}]`
+      );
+
       throw new NotAllowedError(`Access Denied: Actor lacks required scope: ${aiPermissions.agentRun.name}`);
     }
 
@@ -172,6 +182,7 @@ StartRunValidatedInput,
       throw new ConflictError('Rate limit exceeded for agent. Core capacity thresholds exhausted.');
     }
   }
+
 
   protected async handle(input: StartRunValidatedInput, context: CommandContext): Promise<{ readonly runId: string; readonly status: string }> {
     const runId = randomUUID();

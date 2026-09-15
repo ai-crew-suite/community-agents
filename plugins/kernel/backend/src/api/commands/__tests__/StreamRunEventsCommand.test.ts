@@ -96,6 +96,36 @@ describe('StreamRunEventsCommand - Live Event Stream Pipeline Gateway Suite', ()
     vi.useRealTimers();
   });
 
+  it('should throw an unrecoverable system exception and log an error metric if the permissions service response payload is completely empty', async () => {
+    // Simulate a rare platform failure where the authorization engine returns an empty array []
+    mockPermissions.authorize.mockResolvedValue([]);
+
+    const command = new StreamRunEventsCommand(
+      mockPermissions,
+      mockAgentRuntime,
+      mockRunStore as RunStore,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {},
+      mockCredentials
+    );
+
+    // Assert that the command short-circuits and prevents streaming pipelines from waking up
+    await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(
+      'Internal authorization parsing failure encountered'
+    );
+
+    // Verify that the exact compliance error trace was written to logging sinks
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.stringContaining('RBAC stream evaluation failure: Authorization response payload was completely empty')
+    );
+
+    expect(mockAgentRuntime.run).not.toHaveBeenCalled();
+  });
+
   it('should immediately raise an InputError if path variables fail schema validation contracts', async () => {
     const command = new StreamRunEventsCommand(
       mockPermissions,

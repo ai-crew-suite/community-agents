@@ -89,7 +89,7 @@ export class ApproveRunCommand extends BaseKernelCommand<ApproveRunValidatedInpu
     };
   }
 
-  protected async authorize(input: ApproveRunValidatedInput, _context: CommandContext): Promise<void> {
+  protected async authorize(input: ApproveRunValidatedInput, context: CommandContext): Promise<void> {
     const targetPermission = aiPermissions.agentApprove as ResourcePermission<string>;
 
     const decisions = await this.permissions.authorize(
@@ -97,10 +97,20 @@ export class ApproveRunCommand extends BaseKernelCommand<ApproveRunValidatedInpu
       { credentials: this.credentials }
     );
 
-    if (decisions[0]?.result === 'DENY') {
+    const [mainDecision] = decisions;
+
+    // Parity Check: Reject if array payload is completely empty
+    if (!mainDecision) {
+      context.logger.error('RBAC approval evaluation failure: Authorization response payload was completely empty');
+      throw new Error('Internal authorization parsing failure encountered');
+    }
+
+    if (mainDecision.result === 'DENY') {
+      context.logger.warn(`RBAC Approval Blocked: UserRef [${context.actorIdentity}] lacks clearance to authorize execution runs`);
       throw new NotAllowedError(`Access Denied: Actor lacks required scope: ${aiPermissions.agentApprove.name}`);
     }
   }
+
 
   protected async handle(
     input: ApproveRunValidatedInput,

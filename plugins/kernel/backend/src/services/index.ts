@@ -15,5 +15,6 @@
  * limitations under the License.
  */
 
+export * from './AgentRateLimiter';
 export * from './factory';
 export * from './types';

@@ -67,6 +67,19 @@ describe('StartRunCommand - Orchestrated Workflow Initialization Domain Suite', 
     };
   });
 
+  it('should throw an unrecoverable system exception and log an error metric if the permissions service response payload is completely empty', async () => {
+    mockPermissions.authorize.mockResolvedValue([]);
+    const command = new StartRunCommand(mockPermissions, mockAgentsMap, mockConsumeRateLimit, mockRunStore, {}, mockCredentials);
+
+    await expect(command.execute(validRequestInput, mockContext)).rejects.toThrow(
+      'Internal authorization parsing failure encountered'
+    );
+
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.stringContaining('RBAC critical evaluation failure: Authorization response payload was completely empty')
+    );
+  });
+
   it('should throw an explicit NotImplementedError if the core RunStore layer is unconfigured', async () => {
     // Inject undefined for the RunStore dependency parameter
     const command = new StartRunCommand(

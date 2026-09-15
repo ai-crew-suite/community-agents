@@ -112,8 +112,8 @@ export class StreamRunEventsCommand extends BaseKernelCommand<StreamRunValidated
     };
   }
 
-  protected async authorize(input: StreamRunValidatedInput, _context: CommandContext): Promise<void> {
-    // 1. Secure IDOR Check: Prior to returning stream, ensure target entity run records are resolvable
+  protected async authorize(input: StreamRunValidatedInput, context: CommandContext): Promise<void> {
+    // Pre-flight IDOR Verification Check
     const runStore = this.runStore!;
     let activeRunRecord: RunRecord | undefined = undefined;
 
@@ -127,7 +127,7 @@ export class StreamRunEventsCommand extends BaseKernelCommand<StreamRunValidated
       throw new NotFoundError(`The requested workflow execution thread '${input.runId}' could not be resolved.`);
     }
 
-    // 2. Section E.3 Authorization Check mapping against permission framework rules
+    // Blueprint Backstage Platform Permissions Check
     const targetPermission = aiPermissions.runRead as ResourcePermission<string>;
     const decisions = await this.permissions.authorize(
       [{ permission: targetPermission, resourceRef: input.runId }],
@@ -135,7 +135,22 @@ export class StreamRunEventsCommand extends BaseKernelCommand<StreamRunValidated
     );
 
     const [mainDecision] = decisions;
-    if (mainDecision?.result === 'DENY') {
+
+    // Parity Check: Reject if payload is empty OR explicitly denied
+    if (!mainDecision) {
+      context.logger.error('RBAC stream evaluation failure: Authorization response payload was completely empty');
+
+      throw new Error('Internal authorization parsing failure encountered');
+    }
+
+    if (mainDecision.result === 'DENY') {
+      context.logger.warn(
+        `IDOR Stream Attempt Blocked: Actor identity denied access to run stream resources`,
+        {
+          runId: input.runId,
+        }
+      );
+
       throw new NotAllowedError(`Access Denied: Actor lacks required scope: ${aiPermissions.runRead.name}`);
     }
   }

@@ -40,11 +40,12 @@ import {
 } from '@ai-crew-suite/plugin-kernel-node';
 import { ValidationRule } from '@ai-crew-suite/plugin-kernel-node'; // Now cleanly shared from node library
 //import { InMemoryToolRegistry } from '../../../databases/capabilities/ToolRegistry';
+import { createRouter } from './api/router';
 import {
+  AgentRateLimiter,
   createAiBackendServices,
-  createRouter,
   createSourceRegistry,
-} from './service';
+} from './services';
 
 export interface WorkflowValidationExtensionPoint {
   registerValidator(rule: ValidationRule): void;
@@ -166,6 +167,7 @@ export const ragAiPlugin = createBackendPlugin({
         runtimeStores.auditLogSink = sink;
       },
     });
+
     /*
     env.registerExtensionPoint(toolExtensionPoint, {
       addTool(tool) {
@@ -174,6 +176,7 @@ export const ragAiPlugin = createBackendPlugin({
       },
     });
     */
+
     env.registerInit({
       deps: {
         logger: coreServices.logger,
@@ -223,6 +226,10 @@ export const ragAiPlugin = createBackendPlugin({
           throw new Error(`System boot aborted due to database connection loss: ${probeError}`);
         }
 
+        // 1. Initialize the stateful corporate governance rate limiter from configuration limits
+        const rateLimitConfig = config.getOptionalNumber('ai.hardening.rateLimitPerMinute') ?? 0;
+        const rateLimiter = new AgentRateLimiter(logger, rateLimitConfig);
+
         // 2. Assemble Injected Runtime Arrays
         const services = createAiBackendServices({
           logger,
@@ -238,19 +245,26 @@ export const ragAiPlugin = createBackendPlugin({
           auditLogSink: runtimeStores.auditLogSink,
           triggers,
           workflowDefinitions,
-          //toolRegistry.list(),
         });
 
-        // Pass dependencies into the declarative router
-        httpRouter.use(
-          await createRouter({
-            logger,
-            config,
-            httpAuth,
-            permissions,
-            runtimeDependencies: [services.runtime, services.sourceRegistry], // runtime components array
-          }),
-        );
+        // 3. Mount the high-security declarative router context surface
+        const declarativeRouter = await createRouter({
+          logger,
+          config,
+          httpAuth,
+          permissions,
+          agentRuntime: services.runtime,
+          agents,
+          consumeRateLimit: rateLimiter.consume.bind(rateLimiter), // Bound stateful callback function
+          runStore: services.runStore,
+          toolRegistry: services.toolRegistry,
+          sessionStore: services.sessionStore,
+          checkpointStore: services.checkpointStore,
+          artifactSink: services.artifactSink,
+          auditLogSink: services.auditLogSink,
+        });
+
+        httpRouter.use(declarativeRouter);
       },
     });
   },

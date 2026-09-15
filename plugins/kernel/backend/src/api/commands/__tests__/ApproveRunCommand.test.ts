@@ -65,6 +65,37 @@ describe('ApproveRunCommand - Supervised Checkpoint Approval Blueprint Domain Su
     mockCredentials = {} as unknown as BackstageCredentials;
   });
 
+  it('should throw an unrecoverable system exception and log an error metric if the permissions service response payload is completely empty', async () => {
+    mockPermissions.authorize.mockResolvedValue([]);
+    const command = new ApproveRunCommand(
+      mockPermissions,
+      mockAgentRuntime,
+      mockRunStore,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {},
+      mockCredentials
+    );
+
+    const validInput: PackedRequestInput = {
+      params: { id: 'run_123' },
+      query: {},
+      body: { status: 'approved' },
+      headers: {},
+    };
+
+    await expect(command.execute(validInput, mockContext)).rejects.toThrow(
+      'Internal authorization parsing failure encountered'
+    );
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.stringContaining('RBAC approval evaluation failure: Authorization response payload was completely empty')
+    );
+  });
+
+
   it('should immediately raise an InputError if input params or body contents breach Zod validation parameters', async () => {
     const command = new ApproveRunCommand(
       mockPermissions,
