@@ -69,4 +69,16 @@ export const aiPermissions = {
     resourceType: 'embeddings',
   }),
 
+  /**
+   * ====================================================================
+   *   Automated Infrastructure Tokens related permissions
+   * ====================================================================
+   */
+
+  infrastructureTrigger: createPermission({
+    name: 'ai.infrastructure.trigger',
+    attributes: {},
+    resourceType: 'infrastructure',
+  }),
+
 } as const;
