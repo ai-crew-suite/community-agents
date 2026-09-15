@@ -14,25 +14,27 @@
  * limitations under the License.
  */
 import { LoggerService } from '@backstage/backend-plugin-api';
+import { Response } from 'express';
 
-/**
- * Non-nullable context carrying cryptographically verified actor authorities.
- */
 export type CommandContext = {
-  readonly actorIdentity: string; // Validated userEntityRef or system service principal token string
-  readonly createdAt: string;     // ISO timestamp sequence marker
-  readonly logger: LoggerService;  // Highly contextualized workspace child logger instance
+  readonly actorIdentity: string;
+  readonly createdAt: string;
+  readonly logger: LoggerService;
 };
 
-/**
- * Unified data container bundling request fragments safely.
- */
 export type PackedRequestInput = {
   readonly body: Record<string, unknown>;
   readonly query: Record<string, unknown>;
   readonly params: Record<string, unknown>;
-  readonly headers: Record<string, string | string[] | undefined>; // Added for strict perimeter CSRF evaluation
+  readonly headers: Record<string, string | string[] | undefined>;
 };
+
+export interface FlushingResponse extends Response {
+  flush?: () => void;
+}
+
+// Unified token representing the lazy handover function for streaming connections
+export type StreamExecutionFunction = (res: FlushingResponse) => Promise<void>;
 
 export interface Command<TInput, TOutput> {
   execute(input: TInput, context: CommandContext): Promise<TOutput>;

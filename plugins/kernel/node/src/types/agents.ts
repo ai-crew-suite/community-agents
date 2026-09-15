@@ -117,7 +117,7 @@ export type AgentEvent =
   /** Request for human approval before continuing a run. */
   | {
       type: 'approval_request';
-      data: { runId: string; approvalId: string; node: string; reason: string; effect: 'write' };
+      data: { runId: string; approvalId: string; node: string; reason: string; effect: 'read' | 'write' };
     }
   /** Artifact produced by the run. */
   | {

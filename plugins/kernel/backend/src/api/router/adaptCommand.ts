@@ -14,26 +14,36 @@
  * limitations under the License.
  */
 import { Request, Response, NextFunction } from 'express';
-import { 
-  AuthorizeResult,
-  NotAllowedError,
-} from '@backstage/errors';
-import {
-  LoggerService,
-  HttpAuthService,
-  PermissionsService,
-} from '@backstage/backend-plugin-api';
+import { NotAllowedError } from '@backstage/errors';
+import { LoggerService, HttpAuthService } from '@backstage/backend-plugin-api';
 import { BaseKernelCommand } from '../commands/BaseKernelCommand';
 import {
   CommandContext,
   PackedRequestInput,
+  StreamExecutionFunction,
+  FlushingResponse,
 } from '../commands/types';
 
 export type AdapterDependencies = {
   readonly logger: LoggerService;
   readonly httpAuth: HttpAuthService;
-  readonly permissions: PermissionsService;
 };
+
+interface BackstageUserPrincipal {
+  readonly userEntityRef: string;
+}
+
+interface BackstageServicePrincipal {
+  readonly subject: string;
+}
+
+function isUserPrincipal(principal: unknown): principal is BackstageUserPrincipal {
+  return typeof principal === 'object' && principal !== null && 'userEntityRef' in principal;
+}
+
+function isServicePrincipal(principal: unknown): principal is BackstageServicePrincipal {
+  return typeof principal === 'object' && principal !== null && 'subject' in principal;
+}
 
 /**
  * Express adapter transforming an HTTP boundary context into a Command execution loop.
@@ -46,18 +56,24 @@ export function adaptCommand<TInput, TOutput>(
 ) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      // 1. Strict Cryptographic Identity Propagation Check
+      // 1. Strict Cryptographic Identity Propagation Check via modern Backstage allow blocks
       const credentials = await dependencies.httpAuth.credentials(req, {
-        allowUserToken: true,
-        allowServiceToken: true,
+        allow: ['user', 'service'],
       });
 
       if (!credentials || !credentials.principal) {
         throw new NotAllowedError('Access Denied: Missing valid Backstage authentication principal.');
       }
 
-      // Convert principal token metadata to non-nullable string reference format
-      const actorIdentity = credentials.principal.userEntityRef || credentials.principal.subject;
+      let actorIdentity = '';
+      const principal = credentials.principal;
+
+      if (isUserPrincipal(principal)) {
+        actorIdentity = principal.userEntityRef;
+      } else if (isServicePrincipal(principal)) {
+        actorIdentity = principal.subject;
+      }
+
       if (!actorIdentity || typeof actorIdentity !== 'string') {
         throw new NotAllowedError('Access Denied: Non-repudiation contract breach. Invalid actor identity serialization.');
       }
@@ -69,23 +85,42 @@ export function adaptCommand<TInput, TOutput>(
         logger: dependencies.logger.child({ actorIdentity }),
       };
 
-      // 3. Collect Request Payload Fields Safely
+      // 3. High-Security Compliance Extraction (Insulates against Prototype Pollution)
+      const safeBody = Object.create(null);
+      const safeQuery = Object.create(null);
+      const safeParams = Object.create(null);
+
+      if (req.body && typeof req.body === 'object') {
+        Object.assign(safeBody, req.body);
+      }
+      if (req.query && typeof req.query === 'object') {
+        Object.assign(safeQuery, req.query);
+      }
+      if (req.params && typeof req.params === 'object') {
+        Object.assign(safeParams, req.params);
+      }
+
+      const headersMap = req.headers as Record<string, string | string[] | undefined>;
       const packedInput: PackedRequestInput = {
-        body: (req.body && typeof req.body === 'object') ? (req.body as Record<string, unknown>) : {},
-        query: (req.query && typeof req.query === 'object') ? (req.query as Record<string, unknown>) : {},
-        params: (req.params && typeof req.params === 'object') ? (req.params as Record<string, unknown>) : {},
+        body: safeBody,
+        query: safeQuery,
+        params: safeParams,
+        headers: headersMap,
       };
 
-      // 4. Instantiate Command via Dependency Injection and Execute Template Skeleton
-      const commandInstance = new CommandClass(...commandArgs, dependencies.permissions, credentials);
+      // 4. Instantiate Command via clean Injection Graph
+      const commandInstance = new CommandClass(...commandArgs, credentials);
       const result = await commandInstance.execute(packedInput, context);
 
-      // 5. Centralized Response Egress Serialization (Bypassing direct status write loops)
-      if (!res.headersSent) {
-        res.status(200).json(result);
+      // 5. Greenfield Smart Response Switching Bridge
+      if (typeof result === 'function') {
+        await (result as StreamExecutionFunction)(res as FlushingResponse);
+      } else {
+        if (!res.headersSent) {
+          res.status(200).json(result);
+        }
       }
     } catch (error) {
-      // Bubble unhandled platform errors directly out to centralized platform middleware
       next(error);
     }
   };
