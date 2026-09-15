@@ -17,9 +17,6 @@
 import { LoggerService } from '@backstage/backend-plugin-api';
 import { Tool } from '@ai-crew-suite/plugin-kernel-node';
 
-/**
- * Builds a normalized mock payload for default tool-pack stub responses.
- */
 const echo = (provider: string, action: string, args: unknown) => ({
   provider,
   action,
@@ -28,10 +25,8 @@ const echo = (provider: string, action: string, args: unknown) => ({
 });
 
 /**
- * Creates built-in demo tool packs for common integration domains.
- *
- * These tools are intentionally lightweight placeholders that provide stable
- * behavior and logging hooks until provider-specific implementations are wired.
+ * Builds deterministic placeholder tools for local development testing and E2E automation suites.
+ * Isolated completely from production injection trees.
  */
 export const createDefaultToolPackTools = (logger: LoggerService): Tool[] => [
   {
@@ -39,7 +34,7 @@ export const createDefaultToolPackTools = (logger: LoggerService): Tool[] => [
     description: 'Search GitHub issues for context',
     effect: 'read',
     async invoke(args) {
-      logger.info('toolpack.github.search_issues invoked');
+      logger.info('Compliance Test: toolpack.github.search_issues invoked', { args });
       return echo('github', 'search_issues', args);
     },
   },
@@ -48,7 +43,7 @@ export const createDefaultToolPackTools = (logger: LoggerService): Tool[] => [
     description: 'Create a GitHub issue from agent output',
     effect: 'write',
     async invoke(args) {
-      logger.info('toolpack.github.create_issue invoked');
+      logger.info('Compliance Test: toolpack.github.create_issue invoked', { args });
       return {
         ...echo('github', 'create_issue', args),
         url: 'https://github.example/issues/crew-generated',

@@ -20,6 +20,7 @@ import type {
 } from '@backstage/backend-plugin-api';
 import type {
   AgentDefinition,
+  AgentsMap,
   ArtifactSink,
   AuditLogSink,
   AugmentationIndexer,
@@ -28,19 +29,16 @@ import type {
   RunStore,
   SessionStore,
   SourceRegistry,
-  ToolDefinition,
+  ToolMap,
   ToolRegistry,
   TriggerBinding,
-  WorkflowDefinition,
+  WorkflowDefinitionMap,
 } from '@ai-crew-suite/plugin-kernel-node';
 import type { AgentRuntime } from '../runtime';
 import type { WorkflowController } from '../api/controller';
 import type { AiBackendConfig } from '../types';
 
-export type AgentsMap = Map<string, AgentDefinition>;
 export type ModelRegistry = Map<string, BaseChatModel>;
-export type ToolMap = Map<string, ToolDefinition>;
-export type WorkflowDefinitionMap = Map<string, WorkflowDefinition>;
 
 /** Raw dependency bundle used to assemble AI backend runtime services. */
 export interface AiBackendServiceOptions {

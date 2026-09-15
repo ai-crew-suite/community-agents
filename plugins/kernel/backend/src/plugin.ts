@@ -39,6 +39,7 @@ import {
   WorkflowDefinition,
 } from '@ai-crew-suite/plugin-kernel-node';
 import { ValidationRule } from '@ai-crew-suite/plugin-kernel-node'; // Now cleanly shared from node library
+//import { InMemoryToolRegistry } from '../../../databases/capabilities/ToolRegistry';
 import {
   createAiBackendServices,
   createRouter,
@@ -49,7 +50,7 @@ export interface WorkflowValidationExtensionPoint {
   registerValidator(rule: ValidationRule): void;
 }
 
-export const workflowValidationExtensionPoint = 
+export const workflowValidationExtensionPoint =
   createExtensionPoint<WorkflowValidationExtensionPoint>({
     id: 'kernel.workflow.validation',
   });
@@ -165,22 +166,64 @@ export const ragAiPlugin = createBackendPlugin({
         runtimeStores.auditLogSink = sink;
       },
     });
-
+    /*
+    env.registerExtensionPoint(toolExtensionPoint, {
+      addTool(tool) {
+        // The registry handles validation guards and throws standard ConflictErrors natively
+        toolRegistry.register(tool);
+      },
+    });
+    */
     env.registerInit({
       deps: {
         logger: coreServices.logger,
         config: coreServices.rootConfig,
         httpRouter: coreServices.httpRouter,
+        httpAuth: coreServices.httpAuth,
+        permissions: coreServices.permissions,
+        database: coreServices.database,
       },
-      async init({ logger, config, httpRouter }) {
-        logger.debug(`Registered ${triggers.length} AI triggers`);
+      async init({ logger, config, httpRouter, httpAuth, permissions, database }) {
+        logger.info('Initializing Backstage AI Kernel Engine: Compliance Core Mode...');
 
-        // Clean, type-safe assignment using the new optional customRules definition property
-        for (const [id, def] of workflowDefinitions.entries()) {
-          def.customRules = [...(def.customRules ?? []), ...customValidationRules];
-          workflowDefinitions.set(id, def);
+        // Strict Schema Configuration: Proactive boot-time connectivity probe
+        const knexInstance = await database.getClient();
+
+        // @TODO: Need to implement move of registry/ToolRegistry.ts to databases/capabilities
+        //const capabilityStore = new DatabaseCapabilityStore(knexInstance, logger);
+        // Lock the tool registry immediately before generating services or starting engines
+        //capabilityStore.freeze();
+
+        // Check if the current workspace config explicitly permits development mock seeding
+        //const isDevSeedingEnabled = config.getOptionalBoolean('ai.development.enableMockToolpacks') ?? false;
+        /*
+        if (isDevSeedingEnabled) {
+          logger.warn('⚠️ AUDIT NOTICE: Mounting local development placeholder toolpacks into CapabilityStore.');
+
+          // Lazy-load the test utility bundle so it remains completely omitted from standard production runtimes
+          const { createDefaultToolPackTools } = await import('./testUtils/ToolPacks');
+          const mockTools = createDefaultToolPackTools(logger);
+
+          for (const tool of mockTools) {
+            // Direct assignment using custom structural Tool type conversions matching definitions
+            await capabilityStore.save({
+              id: tool.id,
+              description: tool.description,
+              schema: { type: 'object', properties: {} }, // Safe fallback placeholder schemas
+              executor: tool.invoke
+            });
+          }
+        }
+        */
+        try {
+          await knexInstance.raw('SELECT 1');
+          logger.info('Compliance Probe Success: CheckpointStore connection verified.');
+        } catch (probeError) {
+          logger.error('Compliance Probe Critical Failure: CheckpointStore could not be reached.');
+          throw new Error(`System boot aborted due to database connection loss: ${probeError}`);
         }
 
+        // 2. Assemble Injected Runtime Arrays
         const services = createAiBackendServices({
           logger,
           config,
@@ -195,14 +238,17 @@ export const ragAiPlugin = createBackendPlugin({
           auditLogSink: runtimeStores.auditLogSink,
           triggers,
           workflowDefinitions,
+          //toolRegistry.list(),
         });
 
+        // Pass dependencies into the declarative router
         httpRouter.use(
-          createRouter({
+          await createRouter({
             logger,
             config,
-            sourceRegistry: services.sourceRegistry,
-            controller: services.controller,
+            httpAuth,
+            permissions,
+            runtimeDependencies: [services.runtime, services.sourceRegistry], // runtime components array
           }),
         );
       },

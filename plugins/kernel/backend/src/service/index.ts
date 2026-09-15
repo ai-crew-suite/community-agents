@@ -14,23 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { createAiBackendServices } from './factory';
-import { createRouter } from '../api/router';
-import type { AiBackendServiceOptions } from '../types';
 
 export * from './factory';
-export * from '../api/router';
-
-/**
- * Creates the HTTP router object consumed by Backstage plugin wiring.
- */
-export const createApiRoutes = async (options: AiBackendServiceOptions) => {
-  const services = createAiBackendServices(options);
-  const router = createRouter({
-    logger: options.logger,
-    config: options.config,
-    sourceRegistry: services.sourceRegistry,
-    controller: services.controller,
-  });
-  return { router };
-};
+export * from './types';

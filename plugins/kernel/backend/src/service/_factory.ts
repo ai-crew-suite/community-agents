@@ -22,8 +22,12 @@ import type {
   ToolMap,
   WorkflowDefinition,
 } from '@ai-crew-suite/plugin-kernel-node';
-import type { AiBackendServiceOptions, AiBackendServices } from './types';
+import type {
+  AiBackendServiceOptions,
+  AiBackendServices,
+} from './types';
 import type { AiBackendConfig } from '../types';
+import { WorkflowController } from '../api/controller';
 import { AgentRuntime } from '../runtime/AgentRuntime';
 import { GraphExecutor } from '../runtime/GraphExecutor';
 
@@ -57,6 +61,20 @@ function resolveSourceRegistry(
   return sourceRegistry;
 }
 
+function resolveRuntimeDependencies(tools: ToolMap): { augmentationIndexer: unknown; retrievalPipeline: unknown } {
+  let augmentationIndexer: unknown = undefined;
+  let retrievalPipeline: unknown = undefined;
+  for (const tool of tools.values()) {
+    if (tool.augmentationIndexer) {
+      augmentationIndexer = tool.augmentationIndexer;
+    }
+    if (tool.retrievalPipeline) {
+      retrievalPipeline = tool.retrievalPipeline;
+    }
+  }
+  return { augmentationIndexer, retrievalPipeline };
+}
+
 /**
  * Fully typed boot-time safeguard validating structural alignment of system components.
  */
@@ -82,9 +100,7 @@ function validateResolvedAgents(
 }
 
 /**
- * Outputs a clean Dependency Graph Injection Payload. This payload passes strongly
- * typed registries, stores, and runtimes directly to the declarative router so it
- * can distribute them to individual command subclasses.
+ * Builds the resolved AI backend service graph from raw registries and config.
  */
 export function createAiBackendServices(
   options: AiBackendServiceOptions,
@@ -104,23 +120,21 @@ export function createAiBackendServices(
     triggers,
     config,
   } = options;
-
   const aiBackendConfig = config.getOptional<AiBackendConfig>('ai');
   const resolvedSourceRegistry = resolveSourceRegistry(sourceRegistry, config, logger);
+  const { augmentationIndexer, retrievalPipeline } = resolveRuntimeDependencies(tools);
 
   if (agents.size === 0) {
     logger.warn('No agents registered at AI backend factory');
   }
 
-  // Enforce rigid enterprise boot firewalls
   validateResolvedAgents(agents, models, workflowDefinitions, tools);
 
-  // Initialize pure runtime layers with explicit internal engines
   const runtime = new AgentRuntime(
     agents,
     new GraphExecutor(
       workflowDefinitions,
-      null as never, // These remain bound tightly to internal LangGraph lifecycles inside runtime/
+      null as never,
       undefined as never,
       undefined as never,
       undefined as never,
@@ -130,20 +144,31 @@ export function createAiBackendServices(
     ),
   );
 
-  // Return a clean dependency bag directly to plugin.ts
-  return {
-    aiBackendConfig,
-    sourceRegistry: resolvedSourceRegistry,
-    agents,
+  const controller = new WorkflowController(
+    logger,
     runtime,
-    // Pluggable compliance infrastructure stores passed cleanly forward without controller packaging
+    null as never,
+    augmentationIndexer as never,
+    agents,
+    retrievalPipeline as never,
     sessionStore,
     checkpointStore,
     runStore,
     artifactSink,
     auditLogSink,
-    triggers: triggers ?? [],
-    hardeningOptions: toHardeningOptions(aiBackendConfig),
+    triggers ?? [],
+    toHardeningOptions(aiBackendConfig),
+  );
+
+  return {
+    aiBackendConfig,
+    sourceRegistry: resolvedSourceRegistry,
+    agents,
+    augmentationIndexer: augmentationIndexer as never,
+    retrievalPipeline: retrievalPipeline as never,
+    toolRegistry: null as never,
+    runtime,
+    controller,
   };
 }
 

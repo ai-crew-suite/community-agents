@@ -62,6 +62,8 @@ export type AgentDefinition = {
   guardrails?: { input?: boolean; output?: boolean };
 };
 
+export type AgentsMap = Map<string, AgentDefinition>;
+
 /**
  * Exhaustive classification for engine-originated errors surfaced on `AgentEvent` `error` events.
  */

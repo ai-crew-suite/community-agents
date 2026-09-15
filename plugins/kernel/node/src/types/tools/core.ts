@@ -49,6 +49,8 @@ export type ToolDefinition = Tool & {
   retrievalPipeline?: RetrievalPipeline;
 };
 
+export type ToolMap = Map<string, ToolDefinition>;
+
 /**
  * ============================================================================
  *   CORE ENGINE REGISTRIES

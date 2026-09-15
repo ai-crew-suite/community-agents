@@ -39,6 +39,7 @@ export class EventMapper {
   toolCall(runId: string, node: string, tool: string, args: unknown): AgentEvent {
     return { type: 'tool_call', data: { runId, node, tool, args } };
   }
+
   toolResult(runId: string, node: string, tool: string, ok: boolean, summary?: string, output?: unknown): AgentEvent {
     return { type: 'tool_result', data: { runId, node, tool, ok, summary, output } };
   }

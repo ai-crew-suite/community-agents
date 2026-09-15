@@ -795,7 +795,7 @@ describe('approveRunAction - Supervised Checkpoint Approval Boundary', () => {
     );
 
     expect(response.status).toHaveBeenCalledWith(200);
-    
+
     // Proves that even without an active resumption engine stream, the audit ledger transaction is fully written and preserved
     expect(mockRunStore.decideApproval).toHaveBeenCalledWith(
       'run_123',

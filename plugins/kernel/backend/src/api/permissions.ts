@@ -14,26 +14,34 @@
  * limitations under the License.
  */
 
-import type { Permission } from '@backstage/plugin-permission-common';
+// plugins/kernel/backend/src/api/permissions.ts
+import { ResourcePermission } from '@backstage/plugin-permission-common';
 
 /**
- * AI Core permission definitions using the modern Backstage permissions
- * framework. Registered in core-backend; the controller evaluates via
- * `coreServices.permissions.authorize(...)`.
+ * AI Core permission definitions using the modern Backstage permissions framework.
+ * Strongly typed as ResourcePermissions to mandate resourceRef scope requirements during checks.
  */
 export const aiPermissions = {
   agentRun: {
     name: 'ai.agent.run',
+    attributes: {},
+    type: 'resource',
     resourceType: 'agent',
-  } as Permission,
+  } as ResourcePermission<'agent'>,
+
   agentApprove: {
     name: 'ai.agent.approve',
+    attributes: {},
+    type: 'resource',
     resourceType: 'agent',
-  } as Permission,
+  } as ResourcePermission<'agent'>,
+
   runRead: {
     name: 'ai.run.read',
+    attributes: {},
+    type: 'resource',
     resourceType: 'run',
-  } as Permission,
+  } as ResourcePermission<'run'>,
 } as const;
 
 /**
@@ -42,15 +50,14 @@ export const aiPermissions = {
  * `compliance.permission.check` per exception class (developer cannot self-approve).
  */
 export interface ApprovalAuthorizer {
-  authorize(input: { agentId: string; runId: string; identity: string }): Promise<boolean>;
+  authorize(input: { readonly agentId: string; readonly runId: string; readonly identity: string }): Promise<boolean>;
 }
 
 export const createApprovalAuthorizer = (
   mode: 'default' | 'compliance',
 ): ApprovalAuthorizer => ({
   authorize: async ({ agentId: _agentId, runId: _runId, identity: _identity }) => {
-    // Default mode: any authenticated caller may approve. Compliance mode would
-    // call the compliance module scoped to the specific exception/mutation class.
+    // Compliance mode defaults to rigid lock bounds until external hooks extend capability
     return mode === 'compliance' ? false : true;
   },
 });

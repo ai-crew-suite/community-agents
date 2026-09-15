@@ -49,6 +49,8 @@ export type WorkflowDefinition<TState = unknown, TInput = unknown> = {
   customRules?: ValidationRule[];
 };
 
+export type WorkflowDefinitionMap = Map<string, WorkflowDefinition>;
+
 /**
  * ============================================================================
  *   VERTEX (NODE) & EDGE DEFINITIONS

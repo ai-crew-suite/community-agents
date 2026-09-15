@@ -23,7 +23,7 @@ import type {
   ApprovalDecision,
   RunContext,
 } from '@ai-crew-suite/plugin-kernel-node';
-import { GraphExecutor } from './GraphExecutor';
+import type { GraphExecutor } from './GraphExecutor';
 import { ToolExecutor } from './ToolExecutor';
 import { ModelExecutor } from './ModelExecutor';
 
