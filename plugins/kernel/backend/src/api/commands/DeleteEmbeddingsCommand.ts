@@ -51,23 +51,13 @@ export class DeleteEmbeddingsCommand extends BaseKernelCommand<
   DeleteEmbeddingsValidatedInput,
   { readonly response: string }
 > {
-  private readonly credentials: BackstageCredentials;
-
   public constructor(
     private readonly permissions: PermissionsService,
     private readonly augmentationIndexer?: AugmentationIndexer,
     private readonly hardening?: HardeningOptions,
     credentials?: BackstageCredentials
   ) {
-    super();
-
-    if (!credentials) {
-      throw new NotAllowedError(
-        'Perimeter Authentication Failure: Request contains empty or unverified token principals.'
-      );
-    }
-
-    this.credentials = credentials;
+    super(credentials);
   }
 
   protected verifyInfrastructureDependencies(): void {
@@ -196,8 +186,8 @@ export class DeleteEmbeddingsCommand extends BaseKernelCommand<
 
       // Map transactional locking or cluster update blocks to ConflictError
       if (
-        normalizedError.includes('lock') ||
-        normalizedError.includes('deadlock') ||
+        normalizedError.includes('lock') || 
+        normalizedError.includes('deadlock') || 
         normalizedError.includes('concurrent')
       ) {
         context.logger.warn(

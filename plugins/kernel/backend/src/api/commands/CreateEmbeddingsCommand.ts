@@ -47,22 +47,12 @@ type CreateEmbeddingsValidatedInput = {
  * Closes the legacy controller's authorization gap via strict RBAC resource checks.
  */
 export class CreateEmbeddingsCommand extends BaseKernelCommand<CreateEmbeddingsValidatedInput, { readonly response: string; readonly count: number }> {
-  private readonly credentials: BackstageCredentials;
-
   public constructor(
     private readonly permissions: PermissionsService,
     private readonly augmentationIndexer?: AugmentationIndexer,
     credentials?: BackstageCredentials
   ) {
-    super();
-
-    if (!credentials) {
-      throw new NotAllowedError(
-        'Perimeter Authentication Failure: Request contains empty or unverified token principals.'
-      );
-    }
-
-    this.credentials = credentials;
+    super(credentials);
   }
 
   protected verifyInfrastructureDependencies(): void {
@@ -111,17 +101,25 @@ export class CreateEmbeddingsCommand extends BaseKernelCommand<CreateEmbeddingsV
 
     const { query, source, entityFilter } = result.data;
 
-    if (!query || query.trim() === '') {
-      context.logger.warn('Schema Validation Rejection: Query cannot be empty or consist only of whitespace characters', {
-        userRef: context.actorIdentity,
-      });
-      throw new InputError('Invalid embedding configuration criteria: Query parameter cannot be empty or consist only of whitespace.');
+    const sanitizedQuery = query ? query.trim() : '';
+
+    if (sanitizedQuery === '') {
+      context.logger.warn(
+        'Schema Validation Rejection: Query cannot be empty or consist only of whitespace characters',
+        {
+          userRef: context.actorIdentity,
+        }
+      );
+
+      throw new InputError(
+        'Invalid embedding configuration criteria: Query parameter cannot be empty or consist only of whitespace.'
+      );
     }
 
     const safeSource = this.validateSource(source);
 
     return {
-      query,
+      query: sanitizedQuery,
       safeSource,
       entityFilter: entityFilter as EntityFilterShape,
     };

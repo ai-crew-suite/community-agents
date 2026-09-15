@@ -59,8 +59,6 @@ export class ApproveRunCommand extends BaseKernelCommand<
   ApproveRunValidatedInput,
   { success: boolean; status: string }
 > {
-  private readonly credentials: BackstageCredentials;
-
   public constructor(
     private readonly permissions: PermissionsService,
     private readonly agentRuntime: AgentRuntime,
@@ -73,15 +71,7 @@ export class ApproveRunCommand extends BaseKernelCommand<
     private readonly hardening?: Record<string, unknown>,
     credentials?: BackstageCredentials
   ) {
-    super();
-
-    if (!credentials) {
-      throw new NotImplementedError(
-        'Perimeter Authentication Failure: Request contains empty or unverified token principals.'
-      );
-    }
-
-    this.credentials = credentials;
+    super(credentials);
   }
 
   protected async authorize(input: ApproveRunValidatedInput, context: CommandContext): Promise<void> {

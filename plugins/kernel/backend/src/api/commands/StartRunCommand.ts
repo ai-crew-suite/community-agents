@@ -55,8 +55,6 @@ export class StartRunCommand extends BaseKernelCommand<
 StartRunValidatedInput,
 { readonly runId: string; readonly status: string }
 > {
-  private readonly credentials: BackstageCredentials;
-
   public constructor(
     private readonly permissions: PermissionsService,
     private readonly agentsMap: Map<string, unknown>,
@@ -65,15 +63,7 @@ StartRunValidatedInput,
     private readonly hardening?: HardeningOptions,
     credentials?: BackstageCredentials
   ) {
-    super();
-
-    if (!credentials) {
-      throw new NotAllowedError(
-        'Perimeter Authentication Failure: Request contains empty or unverified token principals.'
-      );
-    }
-
-    this.credentials = credentials;
+    super(credentials);
   }
 
   protected async authorize(input: StartRunValidatedInput, context: CommandContext): Promise<void> {

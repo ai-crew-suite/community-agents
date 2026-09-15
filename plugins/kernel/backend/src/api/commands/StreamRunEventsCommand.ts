@@ -53,8 +53,6 @@ export class StreamRunEventsCommand extends BaseKernelCommand<
 StreamRunValidatedInput,
 StreamExecutionFunction
 > {
-  private readonly credentials: BackstageCredentials;
-
   public constructor(
     private readonly permissions: PermissionsService,
     private readonly agentRuntime: AgentRuntime,
@@ -67,15 +65,7 @@ StreamExecutionFunction
     private readonly hardening?: HardeningOptions,
     credentials?: BackstageCredentials
   ) {
-    super();
-
-    if (!credentials) {
-      throw new NotAllowedError(
-        'Perimeter Authentication Failure: Request contains empty or unverified token principals.'
-      );
-    }
-
-    this.credentials = credentials;
+    super(credentials);
   }
 
   protected async authorize(input: StreamRunValidatedInput, context: CommandContext): Promise<void> {

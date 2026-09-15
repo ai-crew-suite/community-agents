@@ -51,6 +51,12 @@ export const aiPermissions = {
    * ====================================================================
    */
 
+  embeddingsRead: createPermission({
+    name: 'ai.embeddings.read',
+    attributes: {},
+    resourceType: 'embeddings',
+  }),
+
   embeddingsWrite: createPermission({
     name: 'ai.embeddings.write',
     attributes: {},

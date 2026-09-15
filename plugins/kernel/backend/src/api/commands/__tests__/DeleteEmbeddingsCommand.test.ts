@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// plugins/kernel/backend/src/api/commands/__tests__/DeleteEmbeddingsCommand.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InputError, NotAllowedError, NotImplementedError, ConflictError } from '@backstage/errors';
 import { BackstageCredentials } from '@backstage/backend-plugin-api';
