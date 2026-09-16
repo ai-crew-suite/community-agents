@@ -30,7 +30,7 @@ import type { EventMapper } from './EventMapper';
 import type { ToolExecutor } from './ToolExecutor';
 import type { ModelExecutor } from './ModelExecutor';
 import type { LangGraphCheckpointer } from './LangGraphCheckpointer';
-import { Redactor } from './Redactor';
+import { Redactor } from './ConfigurableRedactorAdapter';
 
 /** Typed definition map passed by factory. */
 export type WorkflowDefinitionMap = Map<string, WorkflowDefinition>;

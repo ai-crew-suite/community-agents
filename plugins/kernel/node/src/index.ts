@@ -22,8 +22,8 @@ export * from './permissions';
 export * from './types';
 
 // 3. Stateful Runtime & Execution Services
-export * from './services/catalog';
-export * from './services/redaction';
+export * from './service/catalog';
+export * from './service/redaction';
 export * from './workflow';
 
 // 4. Testing SDK Framework (Exposed under a clean namespace wrapper)

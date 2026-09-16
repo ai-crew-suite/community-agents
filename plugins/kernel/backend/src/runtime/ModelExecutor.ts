@@ -17,7 +17,7 @@
 import type { AgentDefinition } from '@ai-crew-suite/plugin-kernel-node';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { NodeError } from '@ai-crew-suite/plugin-kernel-node';
-import type { Redactor } from './Redactor';
+import type { Redactor } from './ConfigurableRedactorAdapter';
 import type { EventMapper } from './EventMapper';
 
 /** Resolved model map entry. */

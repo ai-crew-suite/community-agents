@@ -33,7 +33,7 @@ Let's take a last pass and catch anything we might have missed in the implementa
 
 Let's analyze our test cases and make sure we're implementing a thorough and enterprise-ready test suite. What edge cases are we missing?
 
-Any other test cases that should be in our suite? Did we test if the permissions service response payload is completely empty?
+Any other test cases that should be in our suite?
 
 Do we have comprehensive enterprise-ready coverage now in our test suite? Are there any missing edge cases we should add?
 

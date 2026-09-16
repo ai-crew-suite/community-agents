@@ -18,6 +18,7 @@ export * from './agents';
 export * from './catalog';
 export * from './common';
 export * from './pipelines';
+export * from './privacy';
 export * from './providers';
 export * from './sources';
 export * from './telemetry';

@@ -36,16 +36,16 @@ import {
   ToolDefinition,
   triggerExtensionPoint,
   TriggerBinding,
+  ValidationRule,
   WorkflowDefinition,
 } from '@ai-crew-suite/plugin-kernel-node';
-import { ValidationRule } from '@ai-crew-suite/plugin-kernel-node'; // Now cleanly shared from node library
 //import { InMemoryToolRegistry } from '../../../databases/capabilities/ToolRegistry';
 import { createRouter } from './api/router';
 import {
   AgentRateLimiter,
   createAiBackendServices,
   createSourceRegistry,
-} from './services';
+} from './service';
 
 export interface WorkflowValidationExtensionPoint {
   registerValidator(rule: ValidationRule): void;

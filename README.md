@@ -119,6 +119,36 @@ Build the workspace:
 yarn build
 ```
 
+## 🔒 Security Governance: Protecting Against ReDoS (Regular Expression Denial of Service)
+
+The `ConfigurableRedactorAdapter` allows operators to append custom matching patterns via the `ai.redaction.*` configuration tree in `app-config.yaml`. While this provides excellent runtime flexibility, introducing unverified, nested, or complex custom regular expressions (e.g., `(a+)+`) can expose the server to **ReDoS attacks** via catastrophic exponential backtracking.
+
+Because Node.js executes JavaScript on a single-threaded event loop, a single ReDoS payload can peg a CPU core to 100%, freezing the entire container cluster node.
+
+To completely eliminate this vulnerability and establish a bulletproof security ceiling, **operators must enforce native V8 linear backtracking limits at the process level.** This ensures that if any custom regular expression attempts excessive backtracking, the V8 engine terminates the match instantly with a safe exception rather than locking the thread thread.
+
+### ⚙️ Deployment Configuration Options
+
+You can enforce this safety ceiling in your infrastructure containers using either of the following environment variable configurations.
+
+#### Approach 1: Dedicated V8 Injection Variable (Recommended)
+
+This approach targets the V8 engine parameter registers directly, bypassing standard Node.js CLI string parsers and eliminating the risk of runtime shell argument syntax errors.
+
+```bash
+# Add this line to your Dockerfile, Kubernetes Deployment manifest, or container environment
+export NODE_V8_FLAGS="--max_reg_exp_backtracks=1000"
+```
+
+#### Approach 2: Standard Node Options Envelope
+
+If your production infrastructure standardizes on the global `NODE_OPTIONS` injection vector, you must wrap the target engine configuration parameters inside the `--v8-options` assignment mask.
+
+```bash
+# Ensure there are no spaces between the assignment flags
+export NODE_OPTIONS="--v8-options=--max_reg_exp_backtracks=1000"
+```
+
 ## Repository Layout
 
 ```text

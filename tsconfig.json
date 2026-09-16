@@ -148,15 +148,6 @@
       "path": "./plugins/agents/techdocs-postmortem/react"
     },
     {
-      "path": "./plugins/ai-providers/aws"
-    },
-    {
-      "path": "./plugins/ai-providers/openai"
-    },
-    {
-      "path": "./plugins/ai-providers/openrouter"
-    },
-    {
       "path": "./plugins/databases/runtime"
     },
     {
@@ -164,6 +155,15 @@
     },
     {
       "path": "./plugins/databases/vector/qdrant"
+    },
+    {
+      "path": "./plugins/inference/aws"
+    },
+    {
+      "path": "./plugins/inference/openai"
+    },
+    {
+      "path": "./plugins/inference/openrouter"
     },
     {
       "path": "./plugins/kernel/backend"

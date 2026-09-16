@@ -20,7 +20,7 @@ import {
   type WorkflowNode,
   type WorkflowNodeInput,
 } from '@ai-crew-suite/plugin-kernel-node';
-import type { Redactor } from './Redactor';
+import type { Redactor } from './ConfigurableRedactorAdapter';
 
 type ZodLikeSchema<T> = { parse(value: unknown): T };
 

@@ -24,7 +24,7 @@ import type {
   ToolRegistry,
 } from '@ai-crew-suite/plugin-kernel-node';
 import { NodeError } from '@ai-crew-suite/plugin-kernel-node';
-import { Redactor } from './Redactor';
+import { Redactor } from './ConfigurableRedactorAdapter';
 
 /**
  * Core-owned single choke point for all tool invocation. Enforces allow-lists,

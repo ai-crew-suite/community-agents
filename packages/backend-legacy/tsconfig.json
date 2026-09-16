@@ -59,19 +59,19 @@
       "path": "../../plugins/agents/techdocs-postmortem/backend"
     },
     {
-      "path": "../../plugins/ai-providers/aws"
-    },
-    {
-      "path": "../../plugins/ai-providers/openai"
-    },
-    {
-      "path": "../../plugins/ai-providers/openrouter"
-    },
-    {
       "path": "../../plugins/databases/runtime"
     },
     {
       "path": "../../plugins/databases/vector/pgvector"
+    },
+    {
+      "path": "../../plugins/inference/aws"
+    },
+    {
+      "path": "../../plugins/inference/openai"
+    },
+    {
+      "path": "../../plugins/inference/openrouter"
     },
     {
       "path": "../../plugins/kernel/backend"
