@@ -290,3 +290,37 @@ export const ragAiPlugin = createBackendPlugin({
 - **Directory Parity**: Your folder tree balances perfectly into three parallel data domains: `databases/runtime`, `databases/vector`, and `databases/capability`.
 - **Zero Circular Reference Risk**: The staging array acts as an intermediary, collecting definitions safely during startup so that storage allocation happens linearly.
 - **Production-Grade Audit Readiness**: Tool structures are backed by a persistent database schema, allowing compliance teams to easily run retention reviews or review modification logs.
+
+🗺️ System Blueprint Relationship
+
+```
+                     ┌───────────────────────────┐
+                     │    createRouter/Factory   │
+                     └─────────────┬─────────────┘
+                                   │ (Wires up both dependencies)
+            ┌──────────────────────┴──────────────────────┐
+            ▼                                             ▼
+┌───────────────────────┐                    ┌─────────────────────────┐
+│   StateSerializer     │                    │      ToolRegistry       │
+├───────────────────────┤                    ├─────────────────────────┤
+│ • Cryptographic Vault │                    │ • Tool Packing Registry │
+│ • Encrypts Checkpoints│                    │ • Functional Executors  │
+│ • Handles KMS Secrets │                    │ • Zod Parameter Schemas │
+└───────────────────────┘                    └─────────────────────────┘
+```
+
+When you look at **Step 14** of your notes, it specifies: *"Build `ToolExecutor` ... and wire stores plus `StateSerializer`"* [Step 14]. This is why they were mentioned together—they are both core engine dependencies initialized by the backend startup factory [Step 14].
+
+------
+
+Now that the structural difference between the **cryptographic state serializer** and the **tool packing registry** is clear, which core system file would you like to refactor next? Let me know if we should proceed with:
+
+1. The **`StateSerializer.ts`** snapshot cipher logic.
+2. The **`ToolRegistry.ts`** capability packing logic [Step 16].
+
+`ToolRegistry.ts` (The Capability Inventory)
+
+- **What it does:** It handles the live collection and schema matching for all available agent tools [Step 14, Step 16].
+- **The Mission:** It holds the list of action modules that agents are allowed to run (e.g., executing a Kubernetes cluster scan or sending a Slack message) [Step 14, Step 16]. It validates these tools using standard Zod parameter footprints and manages their execution contexts without ever touching database state serialization or encryption workflows [Step 14, Step 16].
+
+------
