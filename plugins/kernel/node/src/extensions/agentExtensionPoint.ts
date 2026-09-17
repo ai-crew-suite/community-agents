@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright 2026 The AI Crew Suite Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { createExtensionPoint } from '@backstage/backend-plugin-api';
+import type {
+  AgentDefinition,
+} from '../types';
 
-export * from './BaseGraphRunner';
-export * from './errors';
-export * from './validation';
+/**
+ * Extension point for registering executable agent profiles.
+ */
+export interface AgentExtensionPoint {
+  addAgent(agent: AgentDefinition): void;
+}
+
+export const agentExtensionPoint = createExtensionPoint<AgentExtensionPoint>({
+  id: 'plugin-agent.agents',
+});

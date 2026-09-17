@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright 2026 The AI Crew Suite Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { createExtensionPoint } from '@backstage/backend-plugin-api';
 
-export * from './BaseGraphRunner';
-export * from './errors';
-export * from './validation';
+interface CapabilitiesDefinition {
+  name: string;
+  description?: string;
+}
+
+/**
+ * Extension point for registering capabilities of the system in a tool registry.
+ */
+export interface CapabilitiesExtensionPoint {
+  addAgent(agent: CapabilitiesDefinition): void;
+}
+
+export const capabilitiesExtensionPoint = createExtensionPoint<CapabilitiesExtensionPoint>({
+  id: 'plugin-capabilities.agents',
+});

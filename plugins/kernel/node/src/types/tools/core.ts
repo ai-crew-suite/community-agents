@@ -27,15 +27,17 @@ import { AugmentationIndexer, RetrievalPipeline } from '../pipelines';
  */
 export interface Tool<A = unknown, R = unknown> {
   /** Unique tool identifier used by agent definitions and events. */
-  id: string;
+  readonly id: string;
   /** Human-readable summary of the tool's behavior. */
-  description?: string;
+  readonly description?: string;
+  /** The parent architectural category envelope grouping this capability module. */
+  readonly category: ToolCategory;
   /** Optional input schema understood by clients or validation layers. */
-  schema?: unknown;
-  /** Executes the tool with caller-provided arguments and runtime context. */
-  invoke(args: A, ctx: ToolContext): Promise<R>;
+  readonly schema?: unknown;
   /** Declares whether the tool only reads data or may modify external systems. */
-  effect?: 'read' | 'write';
+  readonly effect?: 'read' | 'write';
+  /** Executes the tool with caller-provided arguments and runtime context. */
+  invoke: (args: A, ctx: ToolContext) => Promise<R>;
 }
 
 /**

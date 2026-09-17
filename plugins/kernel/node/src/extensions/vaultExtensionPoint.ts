@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright 2026 The AI Crew Suite Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { createExtensionPoint } from '@backstage/backend-plugin-api';
 
-export * from './BaseGraphRunner';
-export * from './errors';
-export * from './validation';
+interface VaultDefinition {
+  name: string;
+  description?: string;
+}
+
+/**
+ * Extension point for registering vaults of the system for secure storage
+ * of encryption keys used to encrypt and decrypt stored data.
+ */
+export interface VaultExtensionPoint {
+  addVault(vault: VaultDefinition): void;
+}
+
+export const vaultExtensionPoint = createExtensionPoint<VaultExtensionPoint>({
+  id: 'plugin-vault.vaults',
+});

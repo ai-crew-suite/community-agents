@@ -14,6 +14,16 @@
  * limitations under the License.
  */
 
-export * from './BaseGraphRunner';
-export * from './errors';
-export * from './validation';
+export * from './agentExtensionPoint';
+export * from './capabilitiesExtensionPoint';
+export * from './inferenceModelsExtensionPoint';
+export * from './runtimeStoreExtensionPoint';
+export * from './sourceExtensionPoint';
+export * from './toolExtensionPoint';
+export * from './triggerExtensionPoint';
+export * from './vectorStoreExtensionPoint';
+export * from './vaultExtensionPoint';
+export * from './workflowRunnerExtensionPoint';
+
+// Need to refactor to somewhere else
+export * from './tools';

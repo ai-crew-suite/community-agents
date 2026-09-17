@@ -21,7 +21,7 @@ import {
   IncidentManagementDriver,
   KubernetesDiagnosticsDriver,
   VcsDriver,
-} from './types';
+} from '../types';
 import { createExtensionPoint } from '@backstage/backend-plugin-api';
 
 /**
