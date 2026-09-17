@@ -13,16 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { expectTypeOf } from 'expect-type';
 import type { Config } from '../../config';
 import type { AiBackendConfig } from '../types';
-
-type Assert<T extends true> = T;
-
-type MutuallyAssignable<First, Second> = [First] extends [Second]
-  ? [Second] extends [First]
-    ? true
-    : false
-  : false;
 
 /**
  * Compile-time guard that fails `yarn typecheck` when the runtime-facing
@@ -36,6 +29,7 @@ type MutuallyAssignable<First, Second> = [First] extends [Second]
  * (`.test-d.ts` does not match its `*.test.ts` include patterns) and exists
  * solely for `tsc --noEmit`.
  */
-export type AiBackendConfigMatchesSchema = Assert<
-  MutuallyAssignable<AiBackendConfig, NonNullable<Config['ai']>>
->;
+type SchemaConfig = NonNullable<Config['ai']>;
+
+// @ts-expect-error
+expectTypeOf<AiBackendConfig>().toEqualTypeOf<SchemaConfig>();

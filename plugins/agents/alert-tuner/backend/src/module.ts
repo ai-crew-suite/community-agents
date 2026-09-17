@@ -52,6 +52,7 @@ export const alertAiTunerModule = createBackendModule({
 
         // Mount the read-only incident, metrics, and repository tool bindings
         const agent = createAlertAiTunerAgent(resolved);
+
         agents.addAgent(agent);
 
         // Register default reactive triggers managed by the core runtime

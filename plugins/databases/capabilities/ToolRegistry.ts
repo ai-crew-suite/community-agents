@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright 2024 Larder Software Limited
  * Copyright 2026 The AI Crew Suite Authors
  *

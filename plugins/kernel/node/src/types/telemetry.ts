@@ -17,8 +17,6 @@
 /**
  * Metrics accounting block tracking generative model utilization data.
  * Used across sub-agents and monitoring services for resource tracking and audit logs.
- *
- * @public
  */
 export interface UsageMetadata {
   /**

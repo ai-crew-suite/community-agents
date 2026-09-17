@@ -60,7 +60,7 @@ export interface Config {
       mode?: 'redact' | 'reject';
 
       /**
-       * Custom token replacement mask string substituted when a violation occurs under `redact` mode. 
+       * Custom token replacement mask string substituted when a violation occurs under `redact` mode.
        * @defaultValue `[REDACTED]`
        */
       mask?: string;

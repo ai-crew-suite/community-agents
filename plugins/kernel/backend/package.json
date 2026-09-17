@@ -43,13 +43,14 @@
   ],
   "configSchema": "config.d.ts",
   "scripts": {
-    "build": "crew build",
+    "build": "yarn sync-config-types && crew build",
     "clean": "crew clean",
-    "lint": "crew lint",
-    "test:e2e": "crew test:e2e",
-    "test:unit": "crew test:unit",
-    "test:unit:coverage": "crew test:unit:coverage",
-    "typecheck": "crew typecheck"
+    "lint": "yarn sync-config-types && crew lint",
+    "sync-config-types": "node scripts/sync-config-types.js",
+    "test:e2e": "yarn sync-config-types && crew test:e2e",
+    "test:unit": "yarn sync-config-types && crew test:unit",
+    "test:unit:coverage": "yarn sync-config-types && crew test:unit:coverage",
+    "typecheck": "yarn sync-config-types && crew typecheck"
   },
   "dependencies": {
     "@ai-crew-suite/plugin-kernel-node": "workspace:^",
@@ -61,7 +62,7 @@
     "@langchain/core": "catalog:langchain-core",
     "@langchain/langgraph": "^1.4.15",
     "@opentelemetry/api": "^1.9.1",
-    "express": "^4.22.2",
+    "express": "^4.22.3",
     "express-promise-router": "^4.1.1",
     "i18next": "catalog:i18next"
   },

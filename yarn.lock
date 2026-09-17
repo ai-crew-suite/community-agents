@@ -893,9 +893,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ai-crew-suite/plugin-ai-providers-backend-module-aws@workspace:^, @ai-crew-suite/plugin-ai-providers-backend-module-aws@workspace:plugins/ai-providers/aws":
+"@ai-crew-suite/plugin-ai-providers-backend-module-aws@workspace:^, @ai-crew-suite/plugin-ai-providers-backend-module-aws@workspace:plugins/inference/aws":
   version: 0.0.0-use.local
-  resolution: "@ai-crew-suite/plugin-ai-providers-backend-module-aws@workspace:plugins/ai-providers/aws"
+  resolution: "@ai-crew-suite/plugin-ai-providers-backend-module-aws@workspace:plugins/inference/aws"
   dependencies:
     "@ai-crew-suite/cli": "workspace:*"
     "@ai-crew-suite/plugin-kernel-backend": "workspace:^"
@@ -915,9 +915,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ai-crew-suite/plugin-ai-providers-backend-module-openai@workspace:^, @ai-crew-suite/plugin-ai-providers-backend-module-openai@workspace:plugins/ai-providers/openai":
+"@ai-crew-suite/plugin-ai-providers-backend-module-openai@workspace:^, @ai-crew-suite/plugin-ai-providers-backend-module-openai@workspace:plugins/inference/openai":
   version: 0.0.0-use.local
-  resolution: "@ai-crew-suite/plugin-ai-providers-backend-module-openai@workspace:plugins/ai-providers/openai"
+  resolution: "@ai-crew-suite/plugin-ai-providers-backend-module-openai@workspace:plugins/inference/openai"
   dependencies:
     "@ai-crew-suite/cli": "workspace:*"
     "@ai-crew-suite/plugin-kernel-node": "workspace:^"
@@ -934,9 +934,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ai-crew-suite/plugin-ai-providers-backend-module-openrouter@workspace:^, @ai-crew-suite/plugin-ai-providers-backend-module-openrouter@workspace:plugins/ai-providers/openrouter":
+"@ai-crew-suite/plugin-ai-providers-backend-module-openrouter@workspace:^, @ai-crew-suite/plugin-ai-providers-backend-module-openrouter@workspace:plugins/inference/openrouter":
   version: 0.0.0-use.local
-  resolution: "@ai-crew-suite/plugin-ai-providers-backend-module-openrouter@workspace:plugins/ai-providers/openrouter"
+  resolution: "@ai-crew-suite/plugin-ai-providers-backend-module-openrouter@workspace:plugins/inference/openrouter"
   dependencies:
     "@ai-crew-suite/cli": "workspace:*"
     "@ai-crew-suite/plugin-kernel-node": "workspace:^"
@@ -994,7 +994,8 @@ __metadata:
     "@opentelemetry/api": "npm:^1.9.1"
     "@types/compression": "npm:^1.8.1"
     "@types/express": "npm:4.17.25"
-    express: "npm:^4.22.2"
+    expect-type: "npm:^1.4.0"
+    express: "npm:^4.22.3"
     express-promise-router: "npm:^4.1.1"
     i18next: "catalog:i18next"
     vitest: "catalog:vitest"
@@ -22710,7 +22711,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expect-type@npm:^1.3.0":
+"expect-type@npm:^1.3.0, expect-type@npm:^1.4.0":
   version: 1.4.0
   resolution: "expect-type@npm:1.4.0"
   checksum: 10c0/d40d76b8570695d36587beb3cc28494da2ca3ec8f04e67f5622ed2d372d850e401a9adef19c6835e1a8173903f157c79540b34c7b3fbd7cd8ce726cc903c57b7
@@ -22814,7 +22815,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"express@npm:^4.14.0, express@npm:^4.17.1, express@npm:^4.21.1, express@npm:^4.22.0, express@npm:^4.22.1, express@npm:^4.22.2":
+"express@npm:^4.14.0, express@npm:^4.17.1, express@npm:^4.21.1, express@npm:^4.22.0, express@npm:^4.22.1":
   version: 4.22.2
   resolution: "express@npm:4.22.2"
   dependencies:
@@ -22850,6 +22851,45 @@ __metadata:
     utils-merge: "npm:1.0.1"
     vary: "npm:~1.1.2"
   checksum: 10c0/d06dd4379fd217440b30f8abbe45f0e74931114c1395034f03e7d635196ecdab530d4835a1962a6aa34838d61967dc6f1f77846999bba3032373e9e714222c44
+  languageName: node
+  linkType: hard
+
+"express@npm:^4.22.3":
+  version: 4.22.3
+  resolution: "express@npm:4.22.3"
+  dependencies:
+    accepts: "npm:~1.3.8"
+    array-flatten: "npm:1.1.1"
+    body-parser: "npm:~1.20.5"
+    content-disposition: "npm:~0.5.4"
+    content-type: "npm:~1.0.4"
+    cookie: "npm:~0.7.1"
+    cookie-signature: "npm:~1.0.6"
+    debug: "npm:2.6.9"
+    depd: "npm:2.0.0"
+    encodeurl: "npm:~2.0.0"
+    escape-html: "npm:~1.0.3"
+    etag: "npm:~1.8.1"
+    finalhandler: "npm:~1.3.1"
+    fresh: "npm:~0.5.2"
+    http-errors: "npm:~2.0.0"
+    merge-descriptors: "npm:1.0.3"
+    methods: "npm:~1.1.2"
+    on-finished: "npm:~2.4.1"
+    parseurl: "npm:~1.3.3"
+    path-to-regexp: "npm:~0.1.13"
+    proxy-addr: "npm:~2.0.7"
+    qs: "npm:~6.16.0"
+    range-parser: "npm:~1.2.1"
+    safe-buffer: "npm:5.2.1"
+    send: "npm:~0.19.0"
+    serve-static: "npm:~1.16.2"
+    setprototypeof: "npm:1.2.0"
+    statuses: "npm:~2.0.1"
+    type-is: "npm:~1.6.18"
+    utils-merge: "npm:1.0.1"
+    vary: "npm:~1.1.2"
+  checksum: 10c0/6345a6d460d94afbab42608ea7c13d633b9f4b08df7074869ee1ef493f6a46102437bd32290635f7040858f24de5f0992f541723478d5f3fbc6428e9446cb8ea
   languageName: node
   linkType: hard
 
@@ -31080,7 +31120,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"path-to-regexp@npm:~0.1.12":
+"path-to-regexp@npm:~0.1.12, path-to-regexp@npm:~0.1.13":
   version: 0.1.13
   resolution: "path-to-regexp@npm:0.1.13"
   checksum: 10c0/1cae3921739c154a8926e136185a10c916f79a249b9072a5001b266d96e193860ca03867e8e8cc808b786862d750f427ed93686bc259355442c3407a62deab1a
