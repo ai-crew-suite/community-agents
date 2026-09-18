@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright 2026 The AI Crew Suite Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,11 +19,8 @@ import {
   NotImplementedError,
   ConflictError,
 } from '@backstage/errors';
-import {
-  BackstageCredentials,
-  PermissionsService,
-} from '@backstage/backend-plugin-api';
-import { ResourcePermission } from '@backstage/plugin-permission-common';
+import type { PermissionsService } from '@backstage/backend-plugin-api';
+import type { ResourcePermission } from '@backstage/plugin-permission-common';
 import {
   aiPermissions,
   AugmentationIndexer,
@@ -31,17 +28,24 @@ import {
   EmbeddingsSource,
   HardeningOptions
 } from '@ai-crew-suite/plugin-kernel-node';
-import { BaseKernelCommand } from './BaseKernelCommand';
 import {
+  BaseCommandOptions,
   CommandContext,
   PackedRequestInput,
 } from './types';
 import { DeleteEmbeddingsSchema } from '../schemas';
+import { BaseKernelCommand } from './BaseKernelCommand';
 
 type DeleteEmbeddingsValidatedInput = {
   readonly safeSource: EmbeddingsSource;
   readonly entityFilter?: EntityFilterShape;
 };
+
+export interface DeleteEmbeddingsCommandOptions extends BaseCommandOptions {
+  permissions: PermissionsService;
+  augmentationIndexer?: AugmentationIndexer;
+  hardening?: HardeningOptions;
+}
 
 /**
  * Concrete CQRS Command executing vector knowledge catalog embedding purges.
@@ -51,13 +55,16 @@ export class DeleteEmbeddingsCommand extends BaseKernelCommand<
   DeleteEmbeddingsValidatedInput,
   { readonly response: string }
 > {
-  public constructor(
-    private readonly permissions: PermissionsService,
-    private readonly augmentationIndexer?: AugmentationIndexer,
-    private readonly hardening?: HardeningOptions,
-    credentials?: BackstageCredentials
-  ) {
-    super(credentials);
+  private readonly permissions: PermissionsService;
+  private readonly augmentationIndexer?: AugmentationIndexer;
+  private readonly hardening?: HardeningOptions;
+
+  public constructor(options: DeleteEmbeddingsCommandOptions) {
+    super(options);
+
+    this.permissions = options.permissions;
+    this.augmentationIndexer = options.augmentationIndexer;
+    this.hardening = options.hardening;
   }
 
   protected verifyInfrastructureDependencies(): void {

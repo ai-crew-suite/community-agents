@@ -17,7 +17,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InputError, NotAllowedError, NotImplementedError, ConflictError } from '@backstage/errors';
 import { BackstageCredentials } from '@backstage/backend-plugin-api';
 import { DeleteEmbeddingsCommand } from '../DeleteEmbeddingsCommand';
-import { CommandContext, PackedRequestInput } from '../types';
+import { CommandContext, PackedRequestInput } from '../types/shared';
 import { AugmentationIndexer } from '@ai-crew-suite/plugin-kernel-node';
 
 describe('DeleteEmbeddingsCommand - Controlled Vector Erasure Boundary Suite', () => {

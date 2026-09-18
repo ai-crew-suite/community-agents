@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { z } from 'zod';
 
 /**
  * Stable identifier for a retrieval or indexing source, such as `catalog`,
@@ -23,7 +24,9 @@ export type SourceId = string;
 /**
  * Source identifier used by embedding, indexing, and retrieval APIs.
  */
-export type EmbeddingsSource = SourceId;
+export const EmbeddingsSourceSchema = z.string().min(1);
+
+export type EmbeddingsSource = z.infer<typeof EmbeddingsSourceSchema>;
 
 /**
  * Describes a source that can provide content for embedding and retrieval.
@@ -70,8 +73,18 @@ export type EmbeddingDocMetadata = Record<string, string>;
 /**
  * Optional Backstage entity-style filter accepted by indexing and retrieval APIs.
  */
-export type EntityFilterShape =
+const PrimitiveSchema = z.union([z.string(), z.symbol()]);
 
-  | Record<string, string | symbol | (string | symbol)[]>[]
-  | Record<string, string | symbol | (string | symbol)[]>
-  | undefined;
+const FilterValueSchema = z.union([
+  PrimitiveSchema,
+  z.array(PrimitiveSchema)
+]);
+
+const RecordFilterSchema = z.record(z.string(), FilterValueSchema);
+
+export const EntityFilterShapeSchema = z.union([
+  z.array(RecordFilterSchema),
+  RecordFilterSchema
+]).optional();
+
+export type EntityFilterShape = z.infer<typeof EntityFilterShapeSchema>;

@@ -18,7 +18,7 @@ import { InputError, NotAllowedError, NotImplementedError } from '@backstage/err
 import { BackstageCredentials } from '@backstage/backend-plugin-api';
 import { AugmentationIndexer } from '@ai-crew-suite/plugin-kernel-node';
 import { CreateEmbeddingsCommand } from '../CreateEmbeddingsCommand';
-import { CommandContext, PackedRequestInput } from '../types';
+import { CommandContext, PackedRequestInput } from '../types/shared';
 
 describe('CreateEmbeddingsCommand - Embedded Knowledge Integration Module Suite', () => {
   let mockLogger: any;

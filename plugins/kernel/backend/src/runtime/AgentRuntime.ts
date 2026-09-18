@@ -55,29 +55,55 @@ export class AgentRuntime {
 
     if (!agent) {
       ctx.logger.warn(`Run '${runId}' requested unknown agent '${input.agentId}'`);
-      yield { type: 'error', data: { runId, code: 'invalid_input', retryable: false, message: `Unknown agent '${input.agentId}'` } };
+
+      yield {
+        type: 'error',
+        data: {
+          runId,
+          code: 'invalid_input',
+          retryable: false,
+          message: `Unknown agent '${input.agentId}'`,
+        },
+      };
+
       return;
     }
 
     if (!agent.workflowRef) {
       ctx.logger.warn(`Run '${runId}' agent '${input.agentId}' has no workflowRef`);
-      yield { type: 'error', data: { runId, code: 'invalid_input', retryable: false, message: `Agent '${input.agentId}' has no workflowRef` } };
+
+      yield {
+        type: 'error',
+        data: {
+          runId,
+          code: 'invalid_input',
+          retryable: false,
+          message: `Agent '${input.agentId}' has no workflowRef`
+        }
+      };
+
       return;
     }
 
-    const runSpan = trace.getTracer('plugin-ai-core-backend').startSpan('ai.run', {
-      attributes: { 'ai.run.id': runId, 'ai.agent.id': input.agentId },
-    });
+    const runSpan = trace.getTracer('plugin-ai-core-backend').startSpan(
+      'ai.run',
+      {
+        attributes: { 'ai.run.id': runId, 'ai.agent.id': input.agentId },
+      }
+    );
 
     await this.createRunRecord(input, ctx);
 
     const maxRetries = Math.max(0, ctx.hardening?.maxRetries ?? 0);
     const retryBackoffMs = Math.max(50, ctx.hardening?.retryBackoffMs ?? 250);
+
     const state: RunProcessingState = { seq: 0, totalUsage: 0 };
+
     let attempt = 0;
 
     while (attempt <= maxRetries) {
       const cancelled = await this.cancelIfAborted(runId, state, ctx);
+
       if (cancelled) {
         yield cancelled;
         return;
@@ -85,6 +111,7 @@ export class AgentRuntime {
 
       try {
         const runContext = this.createRunContext(ctx, agent);
+
         const events = this.executor.run(
           agent,
           {
@@ -99,25 +126,40 @@ export class AgentRuntime {
 
         for await (const event of events) {
           const budgetError = await this.processRunEvent(input, ctx, event, state, runSpan);
+
           yield event;
+
           if (budgetError) {
             yield budgetError;
             return;
           }
         }
+
         runSpan.end();
+
         return;
+
       } catch (error) {
         const isLastAttempt = attempt >= maxRetries;
+
         if (isLastAttempt) {
           const failedEvent = await this.failRun(runId, state, ctx, error);
+
           yield failedEvent;
+
           runSpan.end();
+
           return;
         }
+
         const backoffMs = retryBackoffMs * 2 ** attempt;
-        ctx.logger.warn(`Run '${runId}' attempt ${attempt + 1} failed; retrying in ${backoffMs}ms: ${(error as Error)?.message ?? 'Unknown error'}`);
+
+        ctx.logger.warn(
+          `Run '${runId}' attempt ${attempt + 1} failed; retrying in ${backoffMs}ms: ${(error as Error)?.message ?? 'Unknown error'}`
+        );
+
         await this.sleep(backoffMs);
+
         attempt += 1;
       }
     }
@@ -162,6 +204,8 @@ export class AgentRuntime {
       status: 'running',
       trigger: input.trigger,
       idempotencyKey: input.idempotencyKey,
+      actorIdentity: '', // @TODO: Implement Me
+      createdAt: new Date().toISOString(),
     });
   }
 

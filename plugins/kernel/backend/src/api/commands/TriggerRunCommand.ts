@@ -19,19 +19,16 @@ import {
   NotAllowedError,
   NotImplementedError,
 } from '@backstage/errors';
-import {
-  BackstageCredentials,
-  PermissionsService,
-} from '@backstage/backend-plugin-api';
-import { ResourcePermission } from '@backstage/plugin-permission-common';
+import type { PermissionsService } from '@backstage/backend-plugin-api';
+import type { ResourcePermission } from '@backstage/plugin-permission-common';
 import {
   aiPermissions,
-  TriggerBinding,
-  HardeningOptions,
-  AgentRunInput,
+  type TriggerBinding,
+  type HardeningOptions,
+  type AgentRunInput,
 } from '@ai-crew-suite/plugin-kernel-node';
-import { BaseKernelCommand } from './BaseKernelCommand';
-import {
+import type {
+  BaseCommandOptions,
   CommandContext,
   PackedRequestInput,
 } from './types';
@@ -39,6 +36,7 @@ import {
   TriggerRunParamsSchema,
   GenericEventPayloadSchema,
 } from '../schemas';
+import { BaseKernelCommand } from './BaseKernelCommand';
 
 type TriggerRunValidatedInput = {
   readonly source: string;
@@ -46,6 +44,14 @@ type TriggerRunValidatedInput = {
   readonly query: string;
   readonly matchedBinding: TriggerBinding;
 };
+
+export interface TriggerRunCommandOptions extends BaseCommandOptions {
+  agentRuntime?: AgentRuntimeEngine;
+  agentsMap?: Map<string, unknown>;
+  hardeningOptions?: HardeningOptions;
+  permissions: PermissionsService;
+  triggersList?: TriggerBinding[];
+}
 
 export interface AgentRuntimeEngine {
   run(input: AgentRunInput, context: unknown): any;
@@ -56,19 +62,23 @@ export interface AgentRuntimeEngine {
  * Enforces strict non-nullable service principal context verification and prevents background thread leaks.
  */
 export class TriggerRunCommand extends BaseKernelCommand<
-TriggerRunValidatedInput,
-{ readonly runId: string; readonly status: string }
+  TriggerRunValidatedInput,
+  { readonly runId: string; readonly status: string }
 > {
+  private readonly permissions: PermissionsService;
+  private readonly agentRuntime?: AgentRuntimeEngine;
+  private readonly triggersList?: TriggerBinding[];
+  private readonly agentsMap?: Map<string, unknown>;
+  private readonly hardeningOptions?: HardeningOptions;
 
-  public constructor(
-    private readonly permissions: PermissionsService,
-    private readonly agentRuntime?: AgentRuntimeEngine,
-    private readonly triggersList?: TriggerBinding[],
-    private readonly agentsMap?: Map<string, unknown>,
-    private readonly hardeningOptions?: HardeningOptions,
-    credentials?: BackstageCredentials
-  ) {
-    super(credentials);
+  public constructor(options: TriggerRunCommandOptions) {
+    super(options);
+
+    this.permissions = options.permissions;
+    this.agentRuntime = options.agentRuntime;
+    this.triggersList = options.triggersList;
+    this.agentsMap = options.agentsMap;
+    this.hardeningOptions = options.hardeningOptions;
   }
 
   protected verifyInfrastructureDependencies(): void {

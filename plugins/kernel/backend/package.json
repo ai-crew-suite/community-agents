@@ -64,7 +64,8 @@
     "@opentelemetry/api": "^1.9.1",
     "express": "^4.22.3",
     "express-promise-router": "^4.1.1",
-    "i18next": "catalog:i18next"
+    "i18next": "catalog:i18next",
+    "zod": "catalog:zod"
   },
   "devDependencies": {
     "@ai-crew-suite/cli": "workspace:*",

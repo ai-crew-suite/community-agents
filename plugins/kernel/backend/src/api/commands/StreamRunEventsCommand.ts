@@ -14,32 +14,30 @@
  * limitations under the License.
  */
 import { InputError, NotAllowedError, NotFoundError, NotImplementedError } from '@backstage/errors';
+import type { PermissionsService } from '@backstage/backend-plugin-api';
+import { type ResourcePermission } from '@backstage/plugin-permission-common';
 import {
-  BackstageCredentials,
-  PermissionsService,
-} from '@backstage/backend-plugin-api';
-import { ResourcePermission } from '@backstage/plugin-permission-common';
-import {
-  AgentRunInput,
+  type AgentRunInput,
   aiPermissions,
-  ArtifactSink,
-  AuditLogSink,
-  CheckpointStore,
-  HardeningOptions,
-  RunRecord,
-  RunStore,
-  SessionStore,
+  type ArtifactSink,
+  type AuditLogSink,
+  type CheckpointStore,
+  type HardeningOptions,
+  type RunRecord,
+  type RunStore,
+  type SessionStore,
   ToolRegistry,
 } from '@ai-crew-suite/plugin-kernel-node';
-import { BaseKernelCommand } from './BaseKernelCommand';
-import {
+import type {
+  BaseCommandOptions,
   CommandContext,
   PackedRequestInput,
   StreamExecutionFunction,
   FlushingResponse,
 } from './types';
+import { type AgentRuntime } from '../../runtime/AgentRuntime';
 import { StreamRunParamsSchema } from '../schemas';
-import { AgentRuntime } from '../../runtime/AgentRuntime';
+import { BaseKernelCommand } from './BaseKernelCommand';
 
 type StreamRunValidatedInput = {
   readonly runId: string;
@@ -49,23 +47,44 @@ type StreamRunValidatedInput = {
   readonly incomingLastEventId?: string;
 };
 
+export interface StreamRunEventsCommandOptions extends BaseCommandOptions {
+  permissions: PermissionsService;
+  agentRuntime: AgentRuntime;
+  runStore?: RunStore;
+  toolRegistry?: ToolRegistry;
+  sessionStore?: SessionStore;
+  checkpointStore?: CheckpointStore;
+  artifactSink?: ArtifactSink;
+  auditLogSink?: AuditLogSink;
+  hardening?: HardeningOptions;
+}
+
 export class StreamRunEventsCommand extends BaseKernelCommand<
-StreamRunValidatedInput,
-StreamExecutionFunction
+  StreamRunValidatedInput,
+  StreamExecutionFunction
 > {
-  public constructor(
-    private readonly permissions: PermissionsService,
-    private readonly agentRuntime: AgentRuntime,
-    private readonly runStore?: RunStore,
-    private readonly toolRegistry?: ToolRegistry,
-    private readonly sessionStore?: SessionStore,
-    private readonly checkpointStore?: CheckpointStore,
-    private readonly artifactSink?: ArtifactSink,
-    private readonly auditLogSink?: AuditLogSink,
-    private readonly hardening?: HardeningOptions,
-    credentials?: BackstageCredentials
-  ) {
-    super(credentials);
+  private readonly permissions: PermissionsService;
+  private readonly agentRuntime: AgentRuntime;
+  private readonly runStore?: RunStore;
+  private readonly toolRegistry?: ToolRegistry;
+  private readonly sessionStore?: SessionStore;
+  private readonly checkpointStore?: CheckpointStore;
+  private readonly artifactSink?: ArtifactSink;
+  private readonly auditLogSink?: AuditLogSink;
+  private readonly hardening?: HardeningOptions;
+
+  public constructor(options: StreamRunEventsCommandOptions) {
+    super(options);
+
+    this.permissions = options.permissions;
+    this.agentRuntime = options.agentRuntime;
+    this.runStore = options.runStore;
+    this.toolRegistry = options.toolRegistry;
+    this.sessionStore = options.sessionStore;
+    this.checkpointStore = options.checkpointStore;
+    this.artifactSink = options.artifactSink;
+    this.auditLogSink = options.auditLogSink;
+    this.hardening = options.hardening;
   }
 
   protected async authorize(input: StreamRunValidatedInput, context: CommandContext): Promise<void> {

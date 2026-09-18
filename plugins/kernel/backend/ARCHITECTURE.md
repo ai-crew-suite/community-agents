@@ -1,74 +1,6 @@
 # AI Crew Suite `kernel/backend` Architecture
 
 ```bash
-├── src
-│   ├── api
-│   │   ├── controller
-│   │   │   ├── context.ts
-│   │   │   ├── embedding.ts
-│   │   │   ├── identity.ts
-│   │   │   ├── index.ts
-│   │   │   ├── run.ts
-│   │   │   ├── schemas.ts
-│   │   │   ├── __tests__
-│   │   │   │   ├── context.test.ts
-│   │   │   │   ├── embedding.test.ts
-│   │   │   │   ├── identity.test.ts
-│   │   │   │   ├── index.test.ts
-│   │   │   │   ├── run.test.ts
-│   │   │   │   ├── schemas.test.ts
-│   │   │   │   ├── trigger.test.ts
-│   │   │   │   └── webhook.test.ts
-│   │   │   ├── trigger.ts
-│   │   │   ├── types.ts
-│   │   │   └── webhook.ts
-│   │   ├── permissions.ts
-│   │   └── router
-│   │       ├── index.ts
-│   │       ├── __tests__
-│   │       │   └── index.test.ts
-│   │       └── types.ts
-│   ├── index.ts
-│   ├── plugin.ts
-│   ├── registry
-│   │   ├── __tests__
-│   │   │   └── ToolRegistry.test.ts
-│   │   └── ToolRegistry.ts
-│   ├── runtime
-│   │   ├── AgentRuntime.ts
-│   │   ├── EventMapper.ts
-│   │   ├── GraphExecutor.ts
-│   │   ├── index.ts
-│   │   ├── LangGraphCheckpointer.ts
-│   │   ├── ModelExecutor.ts
-│   │   ├── NodeHarness.ts
-│   │   ├── Redactor.ts
-│   │   ├── __tests__
-│   │   └── ToolExecutor.ts
-│   ├── service
-│   │   ├── factory.ts
-│   │   ├── index.ts
-│   │   ├── __tests__
-│   │   │   └── factory.test.ts
-│   │   └── types.ts
-│   ├── __tests__
-│   │   ├── configSchemaSync.test-d.ts
-│   │   └── plugin.test.ts
-│   ├── testUtils
-│   │   └── index.ts
-│   ├── tools
-│   │   ├── index.ts
-│   │   ├── prompts.ts
-│   │   ├── __tests__
-│   │   │   └── prompts.test.ts
-│   │   └── ToolPacks.ts
-│   └── types
-│       └── index.ts
-```
-
-## After Refactor
-
-```bash
 plugins/kernel/backend/
 ├── src/
 │   ├── api/
@@ -114,6 +46,18 @@ plugins/kernel/backend/
 ├── config.d.ts                              # REQUIRED: Strict boot-time validation schema profiles
 └── package.json
 ```
+
+## 💡 High-Security Recommendation for Backstage Plugins
+
+If this filter is parsed directly from req.body or req.query via adaptCommand, incoming JSON will never contain a native JS symbol (they evaluate to undefined or strip out during JSON.parse).If these filters originate purely from HTTP clients, simplify the base primitive to safeguard against edge-case prototype issues:
+
+```typescript
+const FilterValueSchema = z.union([z.string(), z.array(z.string())]);
+const RecordFilterSchema = z.record(z.string(), FilterValueSchema);
+export const EntityFilterShapeSchema = z.union([z.array(RecordFilterSchema), RecordFilterSchema]).optional();
+```
+
+Would you like to review how to write a custom Zod .transform() or .refine() step to safely cast incoming HTTP string flags into your internal domain symbols during validation?
 
 ## `plugins/kernel/backend/src/runtime/AgentRuntime.ts`
 

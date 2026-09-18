@@ -17,7 +17,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InputError, NotAllowedError, NotImplementedError, ConflictError } from '@backstage/errors';
 import { BackstageCredentials } from '@backstage/backend-plugin-api';
 import { StartRunCommand } from '../StartRunCommand';
-import { CommandContext, PackedRequestInput } from '../types';
+import { CommandContext, PackedRequestInput } from '../types/shared';
 
 describe('StartRunCommand - Orchestrated Workflow Initialization Domain Suite', () => {
   let mockLogger: any;

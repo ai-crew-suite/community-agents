@@ -18,24 +18,25 @@ import {
   NotAllowedError,
   NotImplementedError,
 } from '@backstage/errors';
-import {
+import type {
   BackstageCredentials,
   PermissionsService,
 } from '@backstage/backend-plugin-api';
-import { ResourcePermission } from '@backstage/plugin-permission-common';
-import { BaseKernelCommand } from './BaseKernelCommand';
+import type { ResourcePermission } from '@backstage/plugin-permission-common';
 import {
   aiPermissions,
-  EmbeddingsSource,
-  EntityFilterShape,
-  HardeningOptions,
-  RetrievalPipeline,
+  type EmbeddingsSource,
+  type EntityFilterShape,
+  type HardeningOptions,
+  type RetrievalPipeline,
 } from '@ai-crew-suite/plugin-kernel-node';
-import {
+import type {
+  BaseCommandOptions,
   CommandContext,
   PackedRequestInput,
 } from './types';
 import { GetEmbeddingsQuerySchema } from '../schemas';
+import { BaseKernelCommand } from './BaseKernelCommand';
 
 type GetEmbeddingsValidatedInput = {
   readonly query: string;
@@ -43,17 +44,26 @@ type GetEmbeddingsValidatedInput = {
   readonly entityFilter?: EntityFilterShape;
 };
 
+export interface GetEmbeddingsCommandOptions extends BaseCommandOptions {
+  permissions: PermissionsService;
+  retrievalPipeline?: RetrievalPipeline;
+  hardening?: HardeningOptions;
+}
+
 export class GetEmbeddingsCommand extends BaseKernelCommand<
   GetEmbeddingsValidatedInput,
   { readonly results: unknown }
 > {
-  public constructor(
-    private readonly permissions: PermissionsService,
-    private readonly retrievalPipeline?: RetrievalPipeline,
-    private readonly hardening?: HardeningOptions,
-    credentials?: BackstageCredentials
-  ) {
-    super(credentials);
+  private readonly permissions: PermissionsService;
+  private readonly retrievalPipeline?: RetrievalPipeline;
+  private readonly hardening?: HardeningOptions;
+
+  public constructor(options: GetEmbeddingsCommandOptions) {
+    super(options);
+
+    this.permissions = options.permissions;
+    this.retrievalPipeline = options.retrievalPipeline;
+    this.hardening = options.hardening;
   }
 
   protected async authorize(input: GetEmbeddingsValidatedInput, context: CommandContext): Promise<void> {

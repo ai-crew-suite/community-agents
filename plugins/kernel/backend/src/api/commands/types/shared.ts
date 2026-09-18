@@ -22,6 +22,10 @@ export type CommandContext = {
   readonly logger: LoggerService;
 };
 
+export interface Command<TInput, TOutput> {
+  execute(input: TInput, context: CommandContext): Promise<TOutput>;
+}
+
 export type PackedRequestInput = {
   readonly body: Record<string, unknown>;
   readonly query: Record<string, unknown>;
@@ -35,7 +39,3 @@ export interface FlushingResponse extends Response {
 
 // Unified token representing the lazy handover function for streaming connections
 export type StreamExecutionFunction = (res: FlushingResponse) => Promise<void>;
-
-export interface Command<TInput, TOutput> {
-  execute(input: TInput, context: CommandContext): Promise<TOutput>;
-}

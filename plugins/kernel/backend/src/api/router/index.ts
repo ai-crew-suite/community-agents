@@ -39,7 +39,7 @@ import {
   TriggerRunCommand,
   WebhookRunCommand,
 } from '../commands';
-import { AgentRuntime } from '../../runtime/AgentRuntime';
+import type { AgentRuntime } from '../../runtime/AgentRuntime';
 
 export type RouterOptions = {
   readonly logger: LoggerService;
@@ -76,6 +76,8 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
     permissions: options.permissions,
   };
 
+  const hardening = options.config.getOptional('ai.hardening');
+
   /**
    * ============================================================================
    *   Declarative Routing Map via adaptCommand Middleware
@@ -85,89 +87,101 @@ export async function createRouter(options: RouterOptions): Promise<express.Rout
   // Initial Multi-Agent Workflow Initialization Track
   router.post(
     '/agents/:id/runs',
-    adaptCommand(StartRunCommand, adapterDeps, [
-      options.agents,
-      options.consumeRateLimit,
-      options.runStore,
-      // Pass optional structural formatting overrides extracted safely from config boundaries
-      options.config.getOptional('ai.hardening'),
-    ])
+    adaptCommand(StartRunCommand, adapterDeps, {
+      agents: options.agents,
+      consumeRateLimit: options.consumeRateLimit,
+      runStore: options.runStore,
+      hardening,
+    })
   );
 
   // Human-In-The-Loop Manual Checkpoint Supervisor Decision Track
   router.post(
     '/runs/:id/approvals',
-    adaptCommand(ApproveRunCommand, adapterDeps, [
-      options.agentRuntime,
-      options.runStore,
-      options.toolRegistry,
-      options.sessionStore,
-      options.checkpointStore,
-      options.artifactSink,
-      options.auditLogSink,
-      options.config.getOptional('ai.hardening'),
-    ])
+    adaptCommand(ApproveRunCommand, adapterDeps, {
+      agentRuntime: options.agentRuntime,
+      runStore: options.runStore,
+      toolRegistry: options.toolRegistry,
+      sessionStore: options.sessionStore,
+      checkpointStore: options.checkpointStore,
+      artifactSink: options.artifactSink,
+      auditLogSink: options.auditLogSink,
+      hardening,
+    })
   );
 
   // Stateful Real-Time SSE Server Sent Token Streaming Track
   router.get(
     '/runs/:id/events',
-    adaptCommand(StreamRunEventsCommand, adapterDeps, [
-      options.agentRuntime,
-      options.runStore,
-      options.toolRegistry,
-      options.sessionStore,
-      options.checkpointStore,
-      options.artifactSink,
-      options.auditLogSink,
-      options.config.getOptional('ai.hardening'),
-    ])
+    adaptCommand(StreamRunEventsCommand, adapterDeps, {
+      agentRuntime: options.agentRuntime,
+      runStore: options.runStore,
+      toolRegistry: options.toolRegistry,
+      sessionStore: options.sessionStore,
+      checkpointStore: options.checkpointStore,
+      artifactSink: options.artifactSink,
+      auditLogSink: options.auditLogSink,
+      hardening,
+    })
   );
 
+  // Create / Append Catalog Vector Embedding Records Track
   router.post(
     '/embeddings/:source',
-    adaptCommand(CreateEmbeddingsCommand, adapterDeps, [
-      options.augmentationIndexer,
-    ])
+    adaptCommand(CreateEmbeddingsCommand, adapterDeps, {
+      commandDeps: {
+        permissions: options.permissions,
+        augmentationIndexer: options.augmentationIndexer,
+      },
+    })
   );
 
-  // Delete/Purge Catalog Vector Embedding Records Track
+  // Delete / Purge Catalog Vector Embedding Records Track
   router.delete(
     '/embeddings/:source',
-    adaptCommand(DeleteEmbeddingsCommand, adapterDeps, [
-      options.augmentationIndexer,
-      options.config.getOptional('ai.hardening'),
-    ])
+    adaptCommand(DeleteEmbeddingsCommand, adapterDeps, {
+      commandDeps: {
+        permissions: options.permissions,
+        augmentationIndexer: options.augmentationIndexer,
+        hardening: options.config.getOptional('ai.hardening'),
+      },
+    })
   );
 
   // Semantic Context Augmentation Vector Retrieval Track
   router.get(
     '/embeddings/:source',
-    adaptCommand(GetEmbeddingsCommand, adapterDeps, [
-      options.retrievalPipeline,
-      options.config.getOptional('ai.hardening'),
-    ])
+    adaptCommand(GetEmbeddingsCommand, adapterDeps, {
+      commandDeps: {
+        permissions: options.permissions,
+        retrievalPipeline: options.retrievalPipeline,
+        hardening,
+      },
+    })
   );
 
+  // Trigger Track
   router.post(
     '/triggers/:source',
-    adaptCommand(TriggerRunCommand, adapterDeps, [
-      options.agentRuntime,
-      options.triggers,
-      options.agents,
-      options.config.getOptional('ai.hardening'),
-    ])
+    adaptCommand(TriggerRunCommand, adapterDeps, {
+      agentRuntime: options.agentRuntime,
+      triggersList: options.triggers,
+      agentsMap: options.agents,
+      hardeningOptions: hardening,
+      permissions: options.permissions,
+    })
   );
 
-  // Public Third-Party Perimeter Webhook alert Ingestion Track
+  // Public Third-Party Perimeter Webhook Alert Ingestion Track
   router.post(
     '/webhooks/:provider',
-    adaptCommand(WebhookRunCommand, adapterDeps, [
-      options.agentRuntime,
-      options.triggers,
-      options.agents,
-      options.config.getOptional('ai.hardening'),
-    ])
+    adaptCommand(WebhookRunCommand, adapterDeps, {
+      agentRuntime: options.agentRuntime,
+      triggersList: options.triggers,
+      agentsMap: options.agents,
+      hardeningOptions: hardening,
+      permissions: options.permissions,
+    })
   );
 
   // Central platform error handler handles structural sanitization and serialization

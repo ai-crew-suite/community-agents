@@ -19,24 +19,21 @@ import {
   NotFoundError,
   NotImplementedError,
 } from '@backstage/errors';
-import {
-  BackstageCredentials,
-  PermissionsService,
-} from '@backstage/backend-plugin-api';
-import { ResourcePermission } from '@backstage/plugin-permission-common';
+import type { PermissionsService } from '@backstage/backend-plugin-api';
+import type { ResourcePermission } from '@backstage/plugin-permission-common';
 import {
   aiPermissions,
-  ApprovalDecision,
-  ArtifactSink,
-  AuditLogSink,
-  CheckpointStore,
-  RunRecord,
-  RunStore,
-  SessionStore,
-  ToolRegistry,
+  type ApprovalDecision,
+  type ArtifactSink,
+  type AuditLogSink,
+  type CheckpointStore,
+  type RunRecord,
+  type RunStore,
+  type SessionStore,
+  type ToolRegistry,
 } from '@ai-crew-suite/plugin-kernel-node';
-import { BaseKernelCommand } from './BaseKernelCommand';
-import {
+import type {
+  BaseCommandOptions,
   CommandContext,
   PackedRequestInput,
 } from './types';
@@ -44,13 +41,26 @@ import {
   ApproveRunBodySchema,
   ApproveRunParamsSchema,
 } from '../schemas';
-import { AgentRuntime } from '../../runtime/AgentRuntime';
+import type { AgentRuntime } from '../../runtime/AgentRuntime';
+import { BaseKernelCommand } from './BaseKernelCommand';
 
 type ApproveRunValidatedInput = {
   readonly runId: string;
   readonly status: 'approved' | 'rejected';
   readonly note?: string;
 };
+
+export interface ApproveRunCommandOptions extends BaseCommandOptions {
+  agentRuntime: AgentRuntime;
+  permissions: PermissionsService;
+  artifactSink?: ArtifactSink;
+  auditLogSink?: AuditLogSink;
+  checkpointStore?: CheckpointStore;
+  hardening?: Record<string, unknown>;
+  runStore?: RunStore;
+  sessionStore?: SessionStore;
+  toolRegistry?: ToolRegistry;
+}
 
 /**
  * Concrete CQRS Command handling workflow supervisor approvals.
@@ -59,19 +69,28 @@ export class ApproveRunCommand extends BaseKernelCommand<
   ApproveRunValidatedInput,
   { success: boolean; status: string }
 > {
-  public constructor(
-    private readonly permissions: PermissionsService,
-    private readonly agentRuntime: AgentRuntime,
-    private readonly runStore?: RunStore,
-    private readonly toolRegistry?: ToolRegistry,
-    private readonly sessionStore?: SessionStore,
-    private readonly checkpointStore?: CheckpointStore,
-    private readonly artifactSink?: ArtifactSink,
-    private readonly auditLogSink?: AuditLogSink,
-    private readonly hardening?: Record<string, unknown>,
-    credentials?: BackstageCredentials
-  ) {
-    super(credentials);
+  private readonly agentRuntime: AgentRuntime;
+  private readonly permissions: PermissionsService;
+  private readonly artifactSink?: ArtifactSink;
+  private readonly auditLogSink?: AuditLogSink;
+  private readonly checkpointStore?: CheckpointStore;
+  private readonly hardening?: Record<string, unknown>;
+  private readonly runStore?: RunStore;
+  private readonly sessionStore?: SessionStore;
+  private readonly toolRegistry?: ToolRegistry;
+
+  public constructor(options: ApproveRunCommandOptions) {
+    super(options);
+
+    this.agentRuntime = options.agentRuntime;
+    this.permissions = options.permissions;
+    this.artifactSink = options.artifactSink;
+    this.auditLogSink = options.auditLogSink;
+    this.checkpointStore = options.checkpointStore;
+    this.hardening = options.hardening;
+    this.runStore = options.runStore;
+    this.sessionStore = options.sessionStore;
+    this.toolRegistry = options.toolRegistry;
   }
 
   protected async authorize(input: ApproveRunValidatedInput, context: CommandContext): Promise<void> {

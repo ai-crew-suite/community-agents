@@ -17,7 +17,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InputError, NotAllowedError, NotImplementedError } from '@backstage/errors';
 import { BackstageCredentials } from '@backstage/backend-plugin-api';
 import { GetEmbeddingsCommand, RetrievalPipeline } from '../GetEmbeddingsCommand';
-import { CommandContext, PackedRequestInput } from '../types';
+import { CommandContext, PackedRequestInput } from '../types/shared';
 
 describe('GetEmbeddingsCommand - Controlled Context Retrieval Boundary Suite', () => {
   let mockLogger: any;

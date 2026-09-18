@@ -17,7 +17,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InputError, NotAllowedError, ConflictError, NotImplementedError } from '@backstage/errors';
 import { BackstageCredentials } from '@backstage/backend-plugin-api';
 import { ApproveRunCommand } from '../ApproveRunCommand';
-import { CommandContext, PackedRequestInput } from '../types';
+import { CommandContext, PackedRequestInput } from '../types/shared';
 
 describe('ApproveRunCommand - Supervised Checkpoint Approval Blueprint Domain Suite', () => {
   let mockLogger: any;

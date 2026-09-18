@@ -15,16 +15,17 @@
  */
 
 import { randomUUID } from 'crypto';
-import type {
-  AgentDefinition,
-  AuditLogSink,
-  RunContext,
-  ToolInvocationLimits,
-  ToolInvocationResult,
-  ToolRegistry,
+import {
+  type AgentDefinition,
+  type AuditLogSink,
+  NodeError,
+  type Redactor,
+  type RunContext,
+  type ToolInvocationLimits,
+  type ToolInvocationResult,
+  type ToolRegistry,
 } from '@ai-crew-suite/plugin-kernel-node';
-import { NodeError } from '@ai-crew-suite/plugin-kernel-node';
-import { Redactor } from './ConfigurableRedactorAdapter';
+
 
 /**
  * Core-owned single choke point for all tool invocation. Enforces allow-lists,

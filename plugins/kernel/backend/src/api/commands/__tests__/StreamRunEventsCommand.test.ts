@@ -18,7 +18,7 @@ import { InputError, NotAllowedError, NotFoundError } from '@backstage/errors';
 import { BackstageCredentials } from '@backstage/backend-plugin-api';
 import { RunStore } from '@ai-crew-suite/plugin-kernel-node';
 import { StreamRunEventsCommand } from '../StreamRunEventsCommand';
-import { CommandContext, PackedRequestInput, FlushingResponse } from '../types';
+import { CommandContext, PackedRequestInput, FlushingResponse } from '../types/shared';
 import { EventEmitter } from 'events';
 
 describe('StreamRunEventsCommand - Live Event Stream Pipeline Gateway Suite', () => {

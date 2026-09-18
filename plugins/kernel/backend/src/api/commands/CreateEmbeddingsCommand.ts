@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright 2026 The AI Crew Suite Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,23 +18,24 @@ import {
   NotAllowedError,
   NotImplementedError,
 } from '@backstage/errors';
-import {
+import type {
   BackstageCredentials,
   PermissionsService,
 } from '@backstage/backend-plugin-api';
 import {
   aiPermissions,
-  AugmentationIndexer,
-  EntityFilterShape,
-  EmbeddingsSource
+  type AugmentationIndexer,
+  type EntityFilterShape,
+  type EmbeddingsSource
 } from '@ai-crew-suite/plugin-kernel-node';
-import { ResourcePermission } from '@backstage/plugin-permission-common';
-import { BaseKernelCommand } from './BaseKernelCommand';
-import {
+import type { ResourcePermission } from '@backstage/plugin-permission-common';
+import type {
+  BaseCommandOptions,
   CommandContext,
   PackedRequestInput,
 } from './types';
 import { CreateEmbeddingsSchema } from '../schemas';
+import { BaseKernelCommand } from './BaseKernelCommand';
 
 type CreateEmbeddingsValidatedInput = {
   readonly query: string;
@@ -42,17 +43,27 @@ type CreateEmbeddingsValidatedInput = {
   readonly entityFilter?: EntityFilterShape;
 };
 
+export interface CreateEmbeddingsCommandOptions extends BaseCommandOptions {
+  permissions: PermissionsService;
+  augmentationIndexer?: AugmentationIndexer;
+}
+
 /**
  * Concrete CQRS Command executing vector knowledge catalog embedding additions.
  * Closes the legacy controller's authorization gap via strict RBAC resource checks.
  */
-export class CreateEmbeddingsCommand extends BaseKernelCommand<CreateEmbeddingsValidatedInput, { readonly response: string; readonly count: number }> {
-  public constructor(
-    private readonly permissions: PermissionsService,
-    private readonly augmentationIndexer?: AugmentationIndexer,
-    credentials?: BackstageCredentials
-  ) {
-    super(credentials);
+export class CreateEmbeddingsCommand extends BaseKernelCommand<
+  CreateEmbeddingsValidatedInput, 
+  { readonly response: string; readonly count: number }
+> {
+  private readonly permissions: PermissionsService;
+  private readonly augmentationIndexer?: AugmentationIndexer;
+
+  public constructor(options: CreateEmbeddingsCommandOptions) {
+    super(options);
+
+    this.permissions = options.permissions;
+    this.augmentationIndexer = options.augmentationIndexer;
   }
 
   protected verifyInfrastructureDependencies(): void {

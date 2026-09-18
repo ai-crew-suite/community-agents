@@ -74,7 +74,8 @@ if (!aiBlockText) {
 // Prepare the machine-generated output with safety warnings
 const generatedContent = `
 /**
- * @fileoverview MACHINE GENERATED DO NOT MODIFY DIRECTLY
+ * MACHINE GENERATED DO NOT MODIFY DIRECTLY
+ *
  * This file was automatically generated from 'config.d.ts'.
  * Run 'yarn sync-config-types' to update this file.
  *

@@ -17,7 +17,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InputError, NotAllowedError } from '@backstage/errors';
 import { BackstageCredentials } from '@backstage/backend-plugin-api';
 import { BaseKernelCommand } from '../BaseKernelCommand';
-import { CommandContext, PackedRequestInput } from '../types';
+import { CommandContext, PackedRequestInput } from '../types/shared';
 
 // Concrete test harness subclassing our base module to run deterministic state checks
 class TestCommandHarness extends BaseKernelCommand<string, string> {

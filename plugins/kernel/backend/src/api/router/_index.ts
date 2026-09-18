@@ -14,11 +14,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { z } from 'zod';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import Router from 'express-promise-router';
 import { MiddlewareFactory } from '@backstage/backend-defaults/rootHttpRouter';
 import { SourceRegistry } from '@ai-crew-suite/plugin-kernel-node';
 import type { CreateRouterOptions, RouteController } from './types';
+
+const StreamRunEventsRequestSchema = z.object({
+  params: z.object({ id: z.string().min(1) }),
+  query: z.object({
+    agentId: z.string().catch('default-agent'),
+    query: z.string().catch(''),
+    source: z.string().catch('all'),
+    lastEventId: z.string().optional(),
+  }),
+  headers: z.record(z.string(), z.union([z.string(), z.array(z.string())])).optional(),
+}).transform((raw) => ({
+  runId: raw.params.id,
+  agentId: raw.query.agentId,
+  query: raw.query.query,
+  source: raw.query.source,
+  incomingLastEventId: raw.headers?.['last-event-id'] ?? raw.query.lastEventId,
+}));
 
 /**
  * Validates that a requested source exists in the active source registry.

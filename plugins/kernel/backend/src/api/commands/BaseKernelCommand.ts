@@ -17,8 +17,9 @@ import {
   InputError,
   NotAllowedError,
 } from '@backstage/errors';
-import { BackstageCredentials } from '@backstage/backend-plugin-api';
-import {
+import type { BackstageCredentials } from '@backstage/backend-plugin-api';
+import type {
+  BaseCommandOptions,
   Command,
   CommandContext,
   PackedRequestInput,
@@ -31,14 +32,15 @@ import {
 export abstract class BaseKernelCommand<TInput, TOutput> implements Command<PackedRequestInput, TOutput> {
   protected readonly credentials: BackstageCredentials;
 
-  public constructor(credentials?: BackstageCredentials) {
+  public constructor(options: BaseCommandOptions) {
     // Enforce strict perimeter token presence right at the initialization line
-    if (!credentials) {
+    if (!options?.credentials) {
       throw new NotAllowedError(
         'Perimeter Authentication Failure: Request contains empty or unverified token principals.'
       );
     }
-    this.credentials = credentials;
+
+    this.credentials = options.credentials;
   }
 
   public async execute(

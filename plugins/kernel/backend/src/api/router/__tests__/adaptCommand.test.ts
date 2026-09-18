@@ -22,7 +22,7 @@ import {
   CommandContext,
   PackedRequestInput,
   StreamExecutionFunction,
-} from '../../commands/types';
+} from '../../commands/types/shared';
 
 describe('adaptCommand - Security Perimeter Adapter Blueprint Suite', () => {
   let mockLogger: any;

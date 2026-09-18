@@ -18,7 +18,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InputError, NotAllowedError, NotImplementedError } from '@backstage/errors';
 import { BackstageCredentials } from '@backstage/backend-plugin-api';
 import { WebhookRunCommand, WebhookRuntimeEngine } from '../WebhookRunCommand';
-import { CommandContext, PackedRequestInput } from '../types';
+import { CommandContext, PackedRequestInput } from '../types/shared';
 import { TriggerBinding } from '@ai-crew-suite/plugin-kernel-node';
 
 describe('WebhookRunCommand - Controlled Third-Party Webhook Ingestion Boundary Suite', () => {

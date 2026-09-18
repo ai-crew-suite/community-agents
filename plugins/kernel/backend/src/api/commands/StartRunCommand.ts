@@ -13,33 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { randomUUID } from 'crypto';
 import {
   ConflictError,
   InputError,
   NotAllowedError,
   NotImplementedError,
 } from '@backstage/errors';
-import {
+import type {
   BackstageCredentials,
   PermissionsService,
 } from '@backstage/backend-plugin-api';
-import { ResourcePermission } from '@backstage/plugin-permission-common';
-import {
+import type { ResourcePermission } from '@backstage/plugin-permission-common';
+import type {
   aiPermissions,
   HardeningOptions,
   RunRecord,
   RunStore,
 } from '@ai-crew-suite/plugin-kernel-node';
-import { randomUUID } from 'crypto';
-import { BaseKernelCommand } from './BaseKernelCommand';
-import {
+import type {
   CommandContext,
   PackedRequestInput,
-} from './types';
-import {
+} from './types/shared';
+import type {
   StartRunBodySchema,
   StartRunParamsSchema,
 } from '../schemas';
+import { BaseKernelCommand } from './BaseKernelCommand';
 
 type StartRunValidatedInput = {
   readonly agentId: string;

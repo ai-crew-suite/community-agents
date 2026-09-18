@@ -19,20 +19,20 @@ import {
   NotAllowedError,
   NotImplementedError,
 } from '@backstage/errors';
-import {
+import type {
   BackstageCredentials,
   PermissionsService,
 } from '@backstage/backend-plugin-api';
-import { ResourcePermission } from '@backstage/plugin-permission-common';
+import type { ResourcePermission } from '@backstage/plugin-permission-common';
 import {
-  AgentRunInput,
+  type AgentRunInput,
   aiPermissions,
-  HardeningOptions,
-  TriggerBinding,
-  WebhookRuntimeEngine,
+  type HardeningOptions,
+  type TriggerBinding,
+ type  WebhookRuntimeEngine,
 } from '@ai-crew-suite/plugin-kernel-node';
-import { BaseKernelCommand } from './BaseKernelCommand';
-import {
+import type {
+  BaseCommandOptions,
   CommandContext,
   PackedRequestInput
 } from './types';
@@ -40,6 +40,7 @@ import {
   GenericEventPayloadSchema,
   WebhookRunParamsSchema,
 } from '../schemas';
+import { BaseKernelCommand } from './BaseKernelCommand';
 
 type WebhookRunValidatedInput = {
   readonly safeProviderName: string;
@@ -49,21 +50,39 @@ type WebhookRunValidatedInput = {
   readonly matchedBinding: TriggerBinding;
 };
 
+export interface WebhookRunCommandOptions extends BaseCommandOptions {
+  permissions: PermissionsService;
+  agentRuntime?: WebhookRuntimeEngine;
+  triggersList?: TriggerBinding[];
+  agentsMap?: Map<string, unknown>;
+  hardeningOptions?: HardeningOptions;
+}
+
 /**
  * Concrete CQRS Command processing third-party external webhook ingestion event signals.
  * Insulates background tasks via asynchronous fire-and-forget logging boundaries.
  */
-export class WebhookRunCommand extends BaseKernelCommand<WebhookRunValidatedInput, { readonly runId: string; readonly status: string }> {
+export class WebhookRunCommand extends BaseKernelCommand<
+  WebhookRunValidatedInput,
+  { readonly runId: string; readonly status: string }
+> {
+  // 1. Explicitly declare class properties to clear unused-var errors
+  private readonly permissions: PermissionsService;
+  private readonly agentRuntime?: WebhookRuntimeEngine;
+  private readonly triggersList?: TriggerBinding[];
+  private readonly agentsMap?: Map<string, unknown>;
+  private readonly hardeningOptions?: HardeningOptions;
 
-  public constructor(
-    private readonly permissions: PermissionsService,
-    private readonly agentRuntime?: WebhookRuntimeEngine,
-    private readonly triggersList?: TriggerBinding[],
-    private readonly agentsMap?: Map<string, unknown>,
-    private readonly hardeningOptions?: HardeningOptions,
-    credentials?: BackstageCredentials
-  ) {
-    super(credentials);
+  public constructor(options: WebhookRunCommandOptions) {
+    // 2. Pass the options object through to the base kernel constructor
+    super(options);
+
+    // 3. Explicitly assign values from the unified parameter object
+    this.permissions = options.permissions;
+    this.agentRuntime = options.agentRuntime;
+    this.triggersList = options.triggersList;
+    this.agentsMap = options.agentsMap;
+    this.hardeningOptions = options.hardeningOptions;
   }
 
   protected verifyInfrastructureDependencies(): void {

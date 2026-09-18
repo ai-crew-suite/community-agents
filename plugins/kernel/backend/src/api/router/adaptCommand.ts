@@ -18,6 +18,7 @@ import { NotAllowedError } from '@backstage/errors';
 import { LoggerService, HttpAuthService } from '@backstage/backend-plugin-api';
 import { BaseKernelCommand } from '../commands/BaseKernelCommand';
 import {
+  BaseCommandOptions,
   CommandContext,
   PackedRequestInput,
   StreamExecutionFunction,
@@ -49,17 +50,20 @@ function isServicePrincipal(principal: unknown): principal is BackstageServicePr
  * Express adapter transforming an HTTP boundary context into a Command execution loop.
  * Guarantees SOC-2 compliant audit trails and uniform error filtering.
  */
-export function adaptCommand<TInput, TOutput>(
-  CommandClass: new (...args: any[]) => BaseKernelCommand<TInput, TOutput>,
+export function adaptCommand<TInput, TOutput, TOptions extends BaseCommandOptions>(
+  CommandClass: new (options: TOptions) => BaseKernelCommand<TInput, TOutput>,
   dependencies: AdapterDependencies,
-  commandArgs: unknown[] = []
+  config: {
+    // Omit 'credentials' from the required deps since the adapter injects it dynamically
+    commandDeps: Omit<TOptions, 'credentials'>;
+  }
 ) {
+  const { commandDeps } = config;
+
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      // Strict Cryptographic Identity Propagation Check via modern Backstage allow blocks
       const credentials = await dependencies.httpAuth.credentials(req, {
         allow: ['user', 'service'],
-        // Prevent query string leaks in reverse-proxy logs (Nginx/Cloudflare) or browser histories
         allowLimitedAccess: false,
       });
 
@@ -80,41 +84,34 @@ export function adaptCommand<TInput, TOutput>(
         throw new NotAllowedError('Access Denied: Non-repudiation contract breach. Invalid actor identity serialization.');
       }
 
-      // Assemble Structured Immutable Context with search-ready logging
       const context: CommandContext = {
         actorIdentity,
         createdAt: new Date().toISOString(),
         logger: dependencies.logger.child({ actorIdentity }),
       };
 
-      // High-Security Compliance Extraction (Insulates against Prototype Pollution)
       const safeBody = Object.create(null);
       const safeQuery = Object.create(null);
       const safeParams = Object.create(null);
 
-      if (req.body && typeof req.body === 'object') {
-        Object.assign(safeBody, req.body);
-      }
-      if (req.query && typeof req.query === 'object') {
-        Object.assign(safeQuery, req.query);
-      }
-      if (req.params && typeof req.params === 'object') {
-        Object.assign(safeParams, req.params);
-      }
+      if (req.body && typeof req.body === 'object') Object.assign(safeBody, req.body);
+      if (req.query && typeof req.query === 'object') Object.assign(safeQuery, req.query);
+      if (req.params && typeof req.params === 'object') Object.assign(safeParams, req.params);
 
-      const headersMap = req.headers as Record<string, string | string[] | undefined>;
       const packedInput: PackedRequestInput = {
         body: safeBody,
         query: safeQuery,
         params: safeParams,
-        headers: headersMap,
+        headers: req.headers as Record<string, string | string[] | undefined>,
       };
 
-      // Instantiate Command via clean Injection Graph
-      const commandInstance = new CommandClass(...commandArgs, credentials);
+      const commandInstance = new CommandClass({
+        ...(commandDeps as any), // Typecast needed here only inside the boundary adapter block
+        credentials,
+      });
+
       const result = await commandInstance.execute(packedInput, context);
 
-      // Smart Response Switching Bridge
       if (typeof result === 'function') {
         await (result as StreamExecutionFunction)(res as FlushingResponse);
       } else {
@@ -127,3 +124,4 @@ export function adaptCommand<TInput, TOutput>(
     }
   };
 }
+
