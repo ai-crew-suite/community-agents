@@ -18,10 +18,7 @@ import {
   NotAllowedError,
   NotImplementedError,
 } from '@backstage/errors';
-import type {
-  BackstageCredentials,
-  PermissionsService,
-} from '@backstage/backend-plugin-api';
+import type { PermissionsService } from '@backstage/backend-plugin-api';
 import type { ResourcePermission } from '@backstage/plugin-permission-common';
 import {
   aiPermissions,

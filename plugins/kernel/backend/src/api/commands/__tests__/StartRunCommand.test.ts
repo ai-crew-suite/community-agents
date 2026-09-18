@@ -69,7 +69,14 @@ describe('StartRunCommand - Orchestrated Workflow Initialization Domain Suite', 
 
   it('should throw an unrecoverable system exception and log an error metric if the permissions service response payload is completely empty', async () => {
     mockPermissions.authorize.mockResolvedValue([]);
-    const command = new StartRunCommand(mockPermissions, mockAgentsMap, mockConsumeRateLimit, mockRunStore, {}, mockCredentials);
+    const command = new StartRunCommand({
+      permissions: mockPermissions,
+      agentsMap: mockAgentsMap,
+      consumeRateLimit: mockConsumeRateLimit,
+      runStore: mockRunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(validRequestInput, mockContext)).rejects.toThrow(
       'Internal authorization parsing failure encountered'
@@ -82,14 +89,13 @@ describe('StartRunCommand - Orchestrated Workflow Initialization Domain Suite', 
 
   it('should throw an explicit NotImplementedError if the core RunStore layer is unconfigured', async () => {
     // Inject undefined for the RunStore dependency parameter
-    const command = new StartRunCommand(
-      mockPermissions,
-      mockAgentsMap,
-      mockConsumeRateLimit,
-      undefined, // Missing storage engine
-      {},
-      mockCredentials
-    );
+    const command = new StartRunCommand({
+      permissions: mockPermissions,
+      agentsMap: mockAgentsMap,
+      consumeRateLimit: mockConsumeRateLimit,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(validRequestInput, mockContext)).rejects.toThrow(NotImplementedError);
     await expect(command.execute(validRequestInput, mockContext)).rejects.toThrow(
@@ -99,14 +105,14 @@ describe('StartRunCommand - Orchestrated Workflow Initialization Domain Suite', 
 
   it('should throw an explicit NotImplementedError if the rate-limiting callback engine is missing', async () => {
     // Inject undefined for the consumeRateLimit functional dependency callback parameter
-    const command = new StartRunCommand(
-      mockPermissions,
-      mockAgentsMap,
-      undefined as any, // Missing rate limiter callback boundary
-      mockRunStore,
-      {},
-      mockCredentials
-    );
+    const command = new StartRunCommand({
+      permissions: mockPermissions,
+      agentsMap: mockAgentsMap,
+      consumeRateLimit: undefined as any, // Missing rate limiter callback boundary
+      runStore: mockRunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(validRequestInput, mockContext)).rejects.toThrow(NotImplementedError);
     await expect(command.execute(validRequestInput, mockContext)).rejects.toThrow(
@@ -115,14 +121,14 @@ describe('StartRunCommand - Orchestrated Workflow Initialization Domain Suite', 
   });
 
   it('should immediately raise an InputError if validation fields fail Zod parsing parameters', async () => {
-    const command = new StartRunCommand(
-      mockPermissions,
-      mockAgentsMap,
-      mockConsumeRateLimit,
-      mockRunStore,
-      {},
-      mockCredentials
-    );
+    const command = new StartRunCommand({
+      permissions: mockPermissions,
+      agentsMap: mockAgentsMap,
+      consumeRateLimit: mockConsumeRateLimit,
+      runStore: mockRunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const brokenInput: PackedRequestInput = {
       ...validRequestInput,
@@ -138,14 +144,14 @@ describe('StartRunCommand - Orchestrated Workflow Initialization Domain Suite', 
   });
 
   it('should throw an explicit InputError if the requested agentId is unmapped inside engine keys', async () => {
-    const command = new StartRunCommand(
-      mockPermissions,
-      mockAgentsMap,
-      mockConsumeRateLimit,
-      mockRunStore,
-      {},
-      mockCredentials
-    );
+    const command = new StartRunCommand({
+      permissions: mockPermissions,
+      agentsMap: mockAgentsMap,
+      consumeRateLimit: mockConsumeRateLimit,
+      runStore: mockRunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const unmappedInput: PackedRequestInput = {
       ...validRequestInput,
@@ -157,28 +163,28 @@ describe('StartRunCommand - Orchestrated Workflow Initialization Domain Suite', 
 
   it('should raise a ConflictError if local rate limit token buckets evaluate as exhausted', async () => {
     mockConsumeRateLimit.mockReturnValue(false);
-    const command = new StartRunCommand(
-      mockPermissions,
-      mockAgentsMap,
-      mockConsumeRateLimit,
-      mockRunStore,
-      {},
-      mockCredentials
-    );
+    const command = new StartRunCommand({
+      permissions: mockPermissions,
+      agentsMap: mockAgentsMap,
+      consumeRateLimit: mockConsumeRateLimit,
+      runStore: mockRunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(validRequestInput, mockContext)).rejects.toThrow(ConflictError);
     expect(mockRunStore.createRun).not.toHaveBeenCalled();
   });
 
   it('should verify structural elements, provision a durable ledger item, and acknowledge with an accepted receipt', async () => {
-    const command = new StartRunCommand(
-      mockPermissions,
-      mockAgentsMap,
-      mockConsumeRateLimit,
-      mockRunStore,
-      {},
-      mockCredentials
-    );
+    const command = new StartRunCommand({
+      permissions: mockPermissions,
+      agentsMap: mockAgentsMap,
+      consumeRateLimit: mockConsumeRateLimit,
+      runStore: mockRunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const result = await command.execute(validRequestInput, mockContext);
 
@@ -193,14 +199,14 @@ describe('StartRunCommand - Orchestrated Workflow Initialization Domain Suite', 
   });
 
   it('should securely catch async database errors and mask raw cluster details from the client response', async () => {
-    const command = new StartRunCommand(
-      mockPermissions,
-      mockAgentsMap,
-      mockConsumeRateLimit,
-      mockRunStore,
-      {},
-      mockCredentials
-    );
+    const command = new StartRunCommand({
+      permissions: mockPermissions,
+      agentsMap: mockAgentsMap,
+      consumeRateLimit: mockConsumeRateLimit,
+      runStore: mockRunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     mockRunStore.createRun.mockRejectedValue(new Error('FATAL: pool connection timeout on node address 10.0.4.12'));
 
@@ -217,14 +223,14 @@ describe('StartRunCommand - Orchestrated Workflow Initialization Domain Suite', 
   });
 
   it('should immediately reject request executions with a NotAllowedError if custom headers are completely missing during cookie Ingress tracks', async () => {
-    const command = new StartRunCommand(
-      mockPermissions,
-      mockAgentsMap,
-      mockConsumeRateLimit,
-      mockRunStore,
-      {},
-      mockCredentials
-    );
+    const command = new StartRunCommand({
+      permissions: mockPermissions,
+      agentsMap: mockAgentsMap,
+      consumeRateLimit: mockConsumeRateLimit,
+      runStore: mockRunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const missingHeadersInput: PackedRequestInput = {
       ...validRequestInput,
@@ -239,14 +245,14 @@ describe('StartRunCommand - Orchestrated Workflow Initialization Domain Suite', 
   });
 
   it('should successfully extract and process the query when the input payload arrives wrapped inside a nested object container', async () => {
-    const command = new StartRunCommand(
-      mockPermissions,
-      mockAgentsMap,
-      mockConsumeRateLimit,
-      mockRunStore,
-      {},
-      mockCredentials
-    );
+    const command = new StartRunCommand({
+      permissions: mockPermissions,
+      agentsMap: mockAgentsMap,
+      consumeRateLimit: mockConsumeRateLimit,
+      runStore: mockRunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const wrappedInput: PackedRequestInput = {
       ...validRequestInput,
@@ -263,14 +269,14 @@ describe('StartRunCommand - Orchestrated Workflow Initialization Domain Suite', 
   it('should trigger an infrastructure timeout error when the database ledger write hangs indefinitely', async () => {
     // Inject a short timeout configuration parameter value to force the timeout promise race condition
     const hardeningOptions = { timeoutMs: 1 };
-    const command = new StartRunCommand(
-      mockPermissions,
-      mockAgentsMap,
-      mockConsumeRateLimit,
-      mockRunStore,
-      hardeningOptions,
-      mockCredentials
-    );
+    const command = new StartRunCommand({
+      permissions: mockPermissions,
+      agentsMap: mockAgentsMap,
+      consumeRateLimit: mockConsumeRateLimit,
+      runStore: mockRunStore,
+      hardening: hardeningOptions,
+      credentials: mockCredentials,
+    });
 
     mockRunStore.createRun.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 5000)));
 
@@ -286,14 +292,14 @@ describe('StartRunCommand - Orchestrated Workflow Initialization Domain Suite', 
   });
 
   it('should accurately handle and normalize multi-line prompt structures containing trailing carriage returns', async () => {
-    const command = new StartRunCommand(
-      mockPermissions,
-      mockAgentsMap,
-      mockConsumeRateLimit,
-      mockRunStore,
-      {},
-      mockCredentials
-    );
+    const command = new StartRunCommand({
+      permissions: mockPermissions,
+      agentsMap: mockAgentsMap,
+      consumeRateLimit: mockConsumeRateLimit,
+      runStore: mockRunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const complexWhitespaceInput: PackedRequestInput = {
       ...validRequestInput,
@@ -310,14 +316,14 @@ describe('StartRunCommand - Orchestrated Workflow Initialization Domain Suite', 
   });
 
   it('should catch database unique constraint or duplicate primary key conflicts and mask them safely', async () => {
-    const command = new StartRunCommand(
-      mockPermissions,
-      mockAgentsMap,
-      mockConsumeRateLimit,
-      mockRunStore,
-      {},
-      mockCredentials
-    );
+    const command = new StartRunCommand({
+      permissions: mockPermissions,
+      agentsMap: mockAgentsMap,
+      consumeRateLimit: mockConsumeRateLimit,
+      runStore: mockRunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     mockRunStore.createRun.mockRejectedValue(new Error('Key (id)=(run_collision_id) already exists.'));
 
@@ -335,14 +341,14 @@ describe('StartRunCommand - Orchestrated Workflow Initialization Domain Suite', 
   it('should safely fall back to the default 10-second timeout if hardening.timeoutMs is misconfigured as 0 or negative', async () => {
     // Force a misconfigured value to test the fallback mechanism
     const badHardening = { timeoutMs: 0 };
-    const command = new StartRunCommand(
-      mockPermissions,
-      mockAgentsMap,
-      mockConsumeRateLimit,
-      mockRunStore,
-      badHardening,
-      mockCredentials
-    );
+    const command = new StartRunCommand({
+      permissions: mockPermissions,
+      agentsMap: mockAgentsMap,
+      consumeRateLimit: mockConsumeRateLimit,
+      runStore: mockRunStore,
+      hardening: badHardening,
+      credentials: mockCredentials,
+    });
 
     mockRunStore.createRun.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 50)));
 

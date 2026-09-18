@@ -28,6 +28,7 @@ import {
   type AgentRunInput,
 } from '@ai-crew-suite/plugin-kernel-node';
 import type {
+  AgentRuntimeEngine,
   BaseCommandOptions,
   CommandContext,
   PackedRequestInput,
@@ -51,10 +52,6 @@ export interface TriggerRunCommandOptions extends BaseCommandOptions {
   hardeningOptions?: HardeningOptions;
   permissions: PermissionsService;
   triggersList?: TriggerBinding[];
-}
-
-export interface AgentRuntimeEngine {
-  run(input: AgentRunInput, context: unknown): any;
 }
 
 /**

@@ -68,12 +68,22 @@ describe('DeleteEmbeddingsCommand - Controlled Vector Erasure Boundary Suite', (
   });
 
   it('should immediately raise a NotImplementedError if the core AugmentationIndexer layer is missing', async () => {
-    const command = new DeleteEmbeddingsCommand(mockPermissions, undefined, {}, mockCredentials);
+    const command = new DeleteEmbeddingsCommand({
+      permissions: mockPermissions,
+      hardening: {},
+      credentials: mockCredentials,
+    });
+
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(NotImplementedError);
   });
 
   it('should immediately raise an InputError when the input data structural layout fails basic Zod validation', async () => {
-    const command = new DeleteEmbeddingsCommand(mockPermissions, mockIndexer, {}, mockCredentials);
+    const command = new DeleteEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const brokenInput: PackedRequestInput = {
       ...defaultInput,
@@ -93,7 +103,12 @@ describe('DeleteEmbeddingsCommand - Controlled Vector Erasure Boundary Suite', (
   });
 
   it('should safely dispatch parameters to the indexer and return a successful payload block upon validation', async () => {
-    const command = new DeleteEmbeddingsCommand(mockPermissions, mockIndexer, {}, mockCredentials);
+    const command = new DeleteEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const result = await command.execute(defaultInput, mockContext);
 
@@ -111,7 +126,12 @@ describe('DeleteEmbeddingsCommand - Controlled Vector Erasure Boundary Suite', (
   });
 
   it('should intercept async data-layer crashes, execute critical error logging, and bubble up the exception', async () => {
-    const command = new DeleteEmbeddingsCommand(mockPermissions, mockIndexer, {}, mockCredentials);
+    const command = new DeleteEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     vi.mocked(mockIndexer.deleteEmbeddings).mockRejectedValueOnce(new Error('Database partition allocation breakdown'));
 
@@ -128,7 +148,12 @@ describe('DeleteEmbeddingsCommand - Controlled Vector Erasure Boundary Suite', (
   });
 
   it('should explicitly throw a ConflictError when the data layer outputs a table deadlock exception', async () => {
-    const command = new DeleteEmbeddingsCommand(mockPermissions, mockIndexer, {}, mockCredentials);
+    const command = new DeleteEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     vi.mocked(mockIndexer.deleteEmbeddings).mockRejectedValueOnce(
       new Error('Transaction serialization error: concurrent index lock deadlock encountered')
@@ -144,7 +169,13 @@ describe('DeleteEmbeddingsCommand - Controlled Vector Erasure Boundary Suite', (
 
   it('should trigger a timeout rejection when the indexer call takes longer than the configured hardening limits', async () => {
     const lowTimeoutHardening = { timeoutMs: 1 };
-    const command = new DeleteEmbeddingsCommand(mockPermissions, mockIndexer, lowTimeoutHardening, mockCredentials);
+
+    const command = new DeleteEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      hardening: lowTimeoutHardening,
+      credentials: mockCredentials,
+    });
 
     vi.mocked(mockIndexer.deleteEmbeddings).mockImplementationOnce(() => new Promise(resolve => setTimeout(resolve, 5000)));
 
@@ -155,7 +186,13 @@ describe('DeleteEmbeddingsCommand - Controlled Vector Erasure Boundary Suite', (
 
   it('should throw an explicit system exception and log an error metric if the permissions service response payload is completely empty', async () => {
     mockPermissions.authorize.mockResolvedValue([]);
-    const command = new DeleteEmbeddingsCommand(mockPermissions, mockIndexer, {}, mockCredentials);
+
+    const command = new DeleteEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(
       'Internal authorization parsing failure encountered'
@@ -169,14 +206,25 @@ describe('DeleteEmbeddingsCommand - Controlled Vector Erasure Boundary Suite', (
 
   it('should reject requests with a NotAllowedError if the user is explicitly denied by RBAC profiles', async () => {
     mockPermissions.authorize.mockResolvedValue([{ result: 'DENY' }]);
-    const command = new DeleteEmbeddingsCommand(mockPermissions, mockIndexer, {}, mockCredentials);
+
+    const command = new DeleteEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(NotAllowedError);
     expect(mockIndexer.deleteEmbeddings).not.toHaveBeenCalled();
   });
 
   it('should successfully match and map uppercase or variation deadlock strings to a ConflictError safely', async () => {
-    const command = new DeleteEmbeddingsCommand(mockPermissions, mockIndexer, {}, mockCredentials);
+    const command = new DeleteEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     vi.mocked(mockIndexer.deleteEmbeddings).mockRejectedValueOnce(
       new Error('CRITICAL CLUSTER FAILURE: CONCURRENT TRANSACTION DEADLOCK OCCURRED')
@@ -198,7 +246,13 @@ describe('DeleteEmbeddingsCommand - Controlled Vector Erasure Boundary Suite', (
   });
 
   it('should reject requests with an InputError if adversarial arrays are injected into the source string parameter field', async () => {
-    const command = new DeleteEmbeddingsCommand(mockPermissions, mockIndexer, {}, mockCredentials);
+    const command = new DeleteEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      hardening: {},
+      credentials: mockCredentials,
+    });
+
     const arrayFuzzInput: PackedRequestInput = {
       ...defaultInput,
       body: {
@@ -213,7 +267,13 @@ describe('DeleteEmbeddingsCommand - Controlled Vector Erasure Boundary Suite', (
   });
 
   it('should verify that input validation drops register structured actor identity metadata inside the audit telemetry warning log', async () => {
-    const command = new DeleteEmbeddingsCommand(mockPermissions, mockIndexer, {}, mockCredentials);
+    const command = new DeleteEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      hardening: {},
+      credentials: mockCredentials,
+    })
+
     const invalidSchemaInput: PackedRequestInput = {
       ...defaultInput,
       body: {

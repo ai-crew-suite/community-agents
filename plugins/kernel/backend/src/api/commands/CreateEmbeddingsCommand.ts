@@ -18,10 +18,7 @@ import {
   NotAllowedError,
   NotImplementedError,
 } from '@backstage/errors';
-import type {
-  BackstageCredentials,
-  PermissionsService,
-} from '@backstage/backend-plugin-api';
+import type { PermissionsService } from '@backstage/backend-plugin-api';
 import {
   aiPermissions,
   type AugmentationIndexer,
@@ -53,7 +50,7 @@ export interface CreateEmbeddingsCommandOptions extends BaseCommandOptions {
  * Closes the legacy controller's authorization gap via strict RBAC resource checks.
  */
 export class CreateEmbeddingsCommand extends BaseKernelCommand<
-  CreateEmbeddingsValidatedInput, 
+  CreateEmbeddingsValidatedInput,
   { readonly response: string; readonly count: number }
 > {
   private readonly permissions: PermissionsService;

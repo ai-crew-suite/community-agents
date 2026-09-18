@@ -67,18 +67,13 @@ describe('ApproveRunCommand - Supervised Checkpoint Approval Blueprint Domain Su
 
   it('should throw an unrecoverable system exception and log an error metric if the permissions service response payload is completely empty', async () => {
     mockPermissions.authorize.mockResolvedValue([]);
-    const command = new ApproveRunCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      {},
-      mockCredentials
-    );
+    const command = new ApproveRunCommand({
+      agentRuntime: mockAgentRuntime,
+      permissions: mockPermissions,
+      runStore: mockRunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const validInput: PackedRequestInput = {
       params: { id: 'run_123' },
@@ -97,18 +92,12 @@ describe('ApproveRunCommand - Supervised Checkpoint Approval Blueprint Domain Su
 
 
   it('should immediately raise an InputError if input params or body contents breach Zod validation parameters', async () => {
-    const command = new ApproveRunCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      mockCredentials
-    );
+    const command = new ApproveRunCommand({
+      agentRuntime: mockAgentRuntime,
+      permissions: mockPermissions,
+      runStore: mockRunStore,
+      credentials: mockCredentials,
+    });
 
     const invalidInput: PackedRequestInput = {
       params: { id: '' },
@@ -121,18 +110,12 @@ describe('ApproveRunCommand - Supervised Checkpoint Approval Blueprint Domain Su
   });
 
   it('should throw an explicit NotImplementedError if the core RunStore layer is unconfigured', async () => {
-    const command = new ApproveRunCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      mockCredentials
-    );
+    const command = new ApproveRunCommand({
+      agentRuntime: mockAgentRuntime,
+      permissions: mockPermissions,
+      runStore: undefined,
+      credentials: mockCredentials,
+    });
 
     const validInput: PackedRequestInput = {
       params: { id: 'run_123' },
@@ -145,18 +128,12 @@ describe('ApproveRunCommand - Supervised Checkpoint Approval Blueprint Domain Su
   });
 
   it('should throw a NotAllowedError if the executing reviewer is identical to the run initiator (Anti-Self-Approval Check)', async () => {
-    const command = new ApproveRunCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      mockCredentials
-    );
+    const command = new ApproveRunCommand({
+      agentRuntime: mockAgentRuntime,
+      permissions: mockPermissions,
+      runStore: mockRunStore,
+      credentials: mockCredentials,
+    });
 
     const selfApprovalInput: PackedRequestInput = {
       params: { id: 'run_123' },
@@ -177,18 +154,12 @@ describe('ApproveRunCommand - Supervised Checkpoint Approval Blueprint Domain Su
   });
 
   it('should pass parameters forward, map the verified identity, and wake up execution streams on successful approvals', async () => {
-    const command = new ApproveRunCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      mockCredentials
-    );
+    const command = new ApproveRunCommand({
+      agentRuntime: mockAgentRuntime,
+      permissions: mockPermissions,
+      runStore: mockRunStore,
+      credentials: mockCredentials,
+    });
 
     const validInput: PackedRequestInput = {
       params: { id: 'run_123' },
@@ -214,18 +185,12 @@ describe('ApproveRunCommand - Supervised Checkpoint Approval Blueprint Domain Su
   });
 
   it('should process macro-task queue drainage sequentially using setImmediate before invoking engine resumptions', async () => {
-    const command = new ApproveRunCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      mockCredentials
-    );
+    const command = new ApproveRunCommand({
+      agentRuntime: mockAgentRuntime,
+      permissions: mockPermissions,
+      runStore: mockRunStore,
+      credentials: mockCredentials,
+    });
 
     const validInput: PackedRequestInput = {
       params: { id: 'run_123' },
@@ -249,18 +214,12 @@ describe('ApproveRunCommand - Supervised Checkpoint Approval Blueprint Domain Su
   });
 
   it('should immediately raise a ConflictError if attempting to approve a run thread that is already marked as completed', async () => {
-    const command = new ApproveRunCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      mockCredentials
-    );
+    const command = new ApproveRunCommand({
+      agentRuntime: mockAgentRuntime,
+      permissions: mockPermissions,
+      runStore: mockRunStore,
+      credentials: mockCredentials,
+    });
 
     const duplicateInput: PackedRequestInput = {
       params: { id: 'run_123' },
@@ -285,18 +244,12 @@ describe('ApproveRunCommand - Supervised Checkpoint Approval Blueprint Domain Su
   });
 
   it('should safely normalize and trim excess whitespace parameters from reviewer notes to preserve audit text consistency', async () => {
-    const command = new ApproveRunCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      mockCredentials
-    );
+    const command = new ApproveRunCommand({
+      agentRuntime: mockAgentRuntime,
+      permissions: mockPermissions,
+      runStore: mockRunStore,
+      credentials: mockCredentials,
+    });
 
     const messyInput: PackedRequestInput = {
       params: { id: 'run_123' },
@@ -315,18 +268,12 @@ describe('ApproveRunCommand - Supervised Checkpoint Approval Blueprint Domain Su
   });
 
   it('should successfully process actions and track non-repudiation when initialized by an automated System Service Principal identifier', async () => {
-    const command = new ApproveRunCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      mockCredentials
-    );
+    const command = new ApproveRunCommand({
+      agentRuntime: mockAgentRuntime,
+      permissions: mockPermissions,
+      runStore: mockRunStore,
+      credentials: mockCredentials,
+    });
 
     const principalInput: PackedRequestInput = {
       params: { id: 'run_555' },

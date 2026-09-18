@@ -71,12 +71,20 @@ describe('CreateEmbeddingsCommand - Embedded Knowledge Integration Module Suite'
   });
 
   it('should immediately raise an InputError if the core AugmentationIndexer layer is missing', async () => {
-    const command = new CreateEmbeddingsCommand(mockPermissions, undefined, mockCredentials);
+    const command = new CreateEmbeddingsCommand({
+      permissions: mockPermissions,
+      credentials: mockCredentials,
+    });
+
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(NotImplementedError);
   });
 
   it('should immediately raise a standard InputError when provided an invalid empty payload request structure', async () => {
-    const command = new CreateEmbeddingsCommand(mockPermissions, mockIndexer, mockCredentials);
+    const command = new CreateEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      credentials: mockCredentials,
+    });
 
     const malformedInput: PackedRequestInput = {
       ...defaultInput,
@@ -96,7 +104,11 @@ describe('CreateEmbeddingsCommand - Embedded Knowledge Integration Module Suite'
   });
 
   it('should forward structured parameters down to the indexing service and acknowledge on valid inputs', async () => {
-    const command = new CreateEmbeddingsCommand(mockPermissions, mockIndexer, mockCredentials);
+    const command = new CreateEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      credentials: mockCredentials,
+    });
 
     const result = await command.execute(defaultInput, mockContext);
 
@@ -118,7 +130,11 @@ describe('CreateEmbeddingsCommand - Embedded Knowledge Integration Module Suite'
   });
 
   it('should normalize blank or whitespace-only source parameters to "all" and execute safely', async () => {
-    const command = new CreateEmbeddingsCommand(mockPermissions, mockIndexer, mockCredentials);
+    const command = new CreateEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      credentials: mockCredentials,
+    });
 
     const emptySourceInput: PackedRequestInput = {
       ...defaultInput,
@@ -139,7 +155,11 @@ describe('CreateEmbeddingsCommand - Embedded Knowledge Integration Module Suite'
   });
 
   it('should safely slice massive query strings into logging snippets without buffer exhaustion anomalies', async () => {
-    const command = new CreateEmbeddingsCommand(mockPermissions, mockIndexer, mockCredentials);
+    const command = new CreateEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      credentials: mockCredentials,
+    });
     const massiveQuery = 'A'.repeat(5000); // 5KB massive token payload block injection
 
     const highThroughputInput: PackedRequestInput = {
@@ -164,7 +184,11 @@ describe('CreateEmbeddingsCommand - Embedded Knowledge Integration Module Suite'
 
   it('should throw an explicit system exception and log an error metric if the permissions service response payload is completely empty', async () => {
     mockPermissions.authorize.mockResolvedValue([]);
-    const command = new CreateEmbeddingsCommand(mockPermissions, mockIndexer, mockCredentials);
+    const command = new CreateEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(
       'Internal authorization parsing failure encountered'
@@ -178,14 +202,23 @@ describe('CreateEmbeddingsCommand - Embedded Knowledge Integration Module Suite'
 
   it('should reject requests with a NotAllowedError if the user is explicitly denied by RBAC profiles', async () => {
     mockPermissions.authorize.mockResolvedValue([{ result: 'DENY' }]);
-    const command = new CreateEmbeddingsCommand(mockPermissions, mockIndexer, mockCredentials);
+
+    const command = new CreateEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(NotAllowedError);
     expect(mockIndexer.createEmbeddings).not.toHaveBeenCalled();
   });
 
   it('should successfully handle requests when the optional entityFilter property is completely absent', async () => {
-    const command = new CreateEmbeddingsCommand(mockPermissions, mockIndexer, mockCredentials);
+    const command = new CreateEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      credentials: mockCredentials,
+    });
 
     const minimalistInput: PackedRequestInput = {
       ...defaultInput,
@@ -201,7 +234,11 @@ describe('CreateEmbeddingsCommand - Embedded Knowledge Integration Module Suite'
   });
 
   it('should raise an InputError if the query parameter consists entirely of empty whitespace characters', async () => {
-    const command = new CreateEmbeddingsCommand(mockPermissions, mockIndexer, mockCredentials);
+    const command = new CreateEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      credentials: mockCredentials,
+    });
 
     const emptyQueryInput: PackedRequestInput = {
       ...defaultInput,
@@ -216,7 +253,11 @@ describe('CreateEmbeddingsCommand - Embedded Knowledge Integration Module Suite'
   });
 
   it('should securely log data layer write crashes with complete actor tracking and bubble the exception safely', async () => {
-    const command = new CreateEmbeddingsCommand(mockPermissions, mockIndexer, mockCredentials);
+    const command = new CreateEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      credentials: mockCredentials,
+    });
 
     // Simulate a severe database driver or connection pool breakdown
     const infrastructureError = new Error('Vector DB pool exhausted on node cluster-01');
@@ -238,7 +279,11 @@ describe('CreateEmbeddingsCommand - Embedded Knowledge Integration Module Suite'
   });
 
   it('should cleanly encapsulate and isolate entityFilter dictionary parameters from prototype pollution vectors', async () => {
-    const command = new CreateEmbeddingsCommand(mockPermissions, mockIndexer, mockCredentials);
+    const command = new CreateEmbeddingsCommand({
+      permissions: mockPermissions,
+      augmentationIndexer: mockIndexer,
+      credentials: mockCredentials,
+    });
 
     const maliciousFilterInput: PackedRequestInput = {
       ...defaultInput,

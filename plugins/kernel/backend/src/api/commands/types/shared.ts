@@ -13,8 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { LoggerService } from '@backstage/backend-plugin-api';
 import { Response } from 'express';
+import type {
+  BackstageCredentials,
+  LoggerService,
+} from '@backstage/backend-plugin-api';
+import type {
+  AgentRunInput,
+} from '@ai-crew-suite/plugin-kernel-node';
 
 export type CommandContext = {
   readonly actorIdentity: string;
@@ -24,6 +30,11 @@ export type CommandContext = {
 
 export interface Command<TInput, TOutput> {
   execute(input: TInput, context: CommandContext): Promise<TOutput>;
+}
+
+
+export interface BaseCommandOptions {
+  credentials?: BackstageCredentials;
 }
 
 export type PackedRequestInput = {
@@ -39,3 +50,7 @@ export interface FlushingResponse extends Response {
 
 // Unified token representing the lazy handover function for streaming connections
 export type StreamExecutionFunction = (res: FlushingResponse) => Promise<void>;
+
+export interface AgentRuntimeEngine {
+  run(input: AgentRunInput, context: unknown): any;
+}

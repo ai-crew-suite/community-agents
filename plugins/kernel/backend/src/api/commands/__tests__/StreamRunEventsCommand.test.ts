@@ -99,18 +99,13 @@ describe('StreamRunEventsCommand - Live Event Stream Pipeline Gateway Suite', ()
     // Simulate a rare platform failure where the authorization engine returns an empty array []
     mockPermissions.authorize.mockResolvedValue([]);
 
-    const command = new StreamRunEventsCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore as RunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      {},
-      mockCredentials
-    );
+    const command = new StreamRunEventsCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockAgentRuntime,
+      runStore: mockRunStore as RunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     // Assert that the command short-circuits and prevents streaming pipelines from waking up
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(
@@ -126,18 +121,13 @@ describe('StreamRunEventsCommand - Live Event Stream Pipeline Gateway Suite', ()
   });
 
   it('should immediately raise an InputError if path variables fail schema validation contracts', async () => {
-    const command = new StreamRunEventsCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore as RunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      {},
-      mockCredentials
-    );
+    const command = new StreamRunEventsCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockAgentRuntime,
+      runStore: mockRunStore as RunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const brokenInput: PackedRequestInput = {
       ...defaultInput,
@@ -152,18 +142,13 @@ describe('StreamRunEventsCommand - Live Event Stream Pipeline Gateway Suite', ()
   });
 
   it('should throw a NotFoundError if the requested runId cannot be located inside the data store (IDOR Guard)', async () => {
-    const command = new StreamRunEventsCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore as RunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      {},
-      mockCredentials
-    );
+    const command = new StreamRunEventsCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockAgentRuntime,
+      runStore: mockRunStore as RunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     mockRunStore.getRun.mockResolvedValue(undefined);
 
@@ -178,36 +163,26 @@ describe('StreamRunEventsCommand - Live Event Stream Pipeline Gateway Suite', ()
 
   it('should pass immediate modern Backstage NotAllowedErrors to middleware if run read scoping criteria checks drop', async () => {
     mockPermissions.authorize.mockResolvedValue([{ result: 'DENY' }]);
-    const command = new StreamRunEventsCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore as RunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      {},
-      mockCredentials
-    );
+    const command = new StreamRunEventsCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockAgentRuntime,
+      runStore: mockRunStore as RunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(NotAllowedError);
     expect(mockAgentRuntime.run).not.toHaveBeenCalled();
   });
 
   it('should process HTTP reconnection headers, stream tokens cleanly, and issue a native end execution signal', async () => {
-    const command = new StreamRunEventsCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore as RunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      {},
-      mockCredentials
-    );
+    const command = new StreamRunEventsCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockAgentRuntime,
+      runStore: mockRunStore as RunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const streamFunction = await command.execute(defaultInput, mockContext);
     await streamFunction(mockResponse as FlushingResponse);
@@ -221,18 +196,13 @@ describe('StreamRunEventsCommand - Live Event Stream Pipeline Gateway Suite', ()
   });
 
   it('should verify that proxy buffer flushes execute on every text segment generation iteration', async () => {
-    const command = new StreamRunEventsCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore as RunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      {},
-      mockCredentials
-    );
+    const command = new StreamRunEventsCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockAgentRuntime,
+      runStore: mockRunStore as RunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const streamFunction = await command.execute(defaultInput, mockContext);
     await streamFunction(mockResponse as FlushingResponse);
@@ -244,18 +214,13 @@ describe('StreamRunEventsCommand - Live Event Stream Pipeline Gateway Suite', ()
 
   it('should emit proxy heartbeats periodically on configured intervals and clear them safely upon stream completion', async () => {
     vi.useFakeTimers();
-    const command = new StreamRunEventsCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore as RunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      {},
-      mockCredentials
-    );
+    const command = new StreamRunEventsCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockAgentRuntime,
+      runStore: mockRunStore as RunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const spyClearInterval = vi.spyOn(global, 'clearInterval');
 
@@ -291,18 +256,13 @@ describe('StreamRunEventsCommand - Live Event Stream Pipeline Gateway Suite', ()
   });
 
   it('should fall back safely to a zero sequence index if the client sends a malformed Last-Event-ID', async () => {
-    const command = new StreamRunEventsCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore as RunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      {},
-      mockCredentials
-    );
+    const command = new StreamRunEventsCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockAgentRuntime,
+      runStore: mockRunStore as RunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const corruptInput: PackedRequestInput = { ...defaultInput, headers: { 'last-event-id': '99_corrupt_overflow_token' } };
 
@@ -316,18 +276,13 @@ describe('StreamRunEventsCommand - Live Event Stream Pipeline Gateway Suite', ()
   });
 
   it('should engage an explicit AbortSignal and terminate underlying engine streaming if the network container closes prematurely', async () => {
-    const command = new StreamRunEventsCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore as RunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      {},
-      mockCredentials
-    );
+    const command = new StreamRunEventsCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockAgentRuntime,
+      runStore: mockRunStore as RunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     mockAgentRuntime.run.mockImplementation(async function* () {
       yield { type: 'token', data: { text: 'First slice' } };
@@ -347,18 +302,13 @@ describe('StreamRunEventsCommand - Live Event Stream Pipeline Gateway Suite', ()
   it('should respect network backpressure by pausing the event stream loop until a drain event is emitted', async () => {
     // Force real timers so asynchronous macros and event loops coordinate without timeout blocks
     vi.useRealTimers();
-    const command = new StreamRunEventsCommand(
-      mockPermissions,
-      mockAgentRuntime,
-      mockRunStore as RunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      {},
-      mockCredentials
-    );
+    const command = new StreamRunEventsCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockAgentRuntime,
+      runStore: mockRunStore as RunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     mockResponse.write
       .mockReturnValueOnce(true)
@@ -380,17 +330,13 @@ describe('StreamRunEventsCommand - Live Event Stream Pipeline Gateway Suite', ()
 
 
   it('should inject a safe error token and terminate the response cleanly if the generator crashes mid-stream', async () => {
-    const command = new StreamRunEventsCommand(
-      mockPermissions, mockAgentRuntime,
-      mockRunStore as RunStore,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      {},
-      mockCredentials
-    );
+    const command = new StreamRunEventsCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockAgentRuntime,
+      runStore: mockRunStore as RunStore,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     mockAgentRuntime.run.mockImplementation(async function*() {
       throw new Error('Vector engine socket disconnected or timed out mid-iteration');

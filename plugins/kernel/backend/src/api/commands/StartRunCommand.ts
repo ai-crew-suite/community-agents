@@ -20,22 +20,20 @@ import {
   NotAllowedError,
   NotImplementedError,
 } from '@backstage/errors';
-import type {
-  BackstageCredentials,
-  PermissionsService,
-} from '@backstage/backend-plugin-api';
+import type { PermissionsService} from '@backstage/backend-plugin-api';
 import type { ResourcePermission } from '@backstage/plugin-permission-common';
-import type {
+import {
   aiPermissions,
-  HardeningOptions,
-  RunRecord,
-  RunStore,
+  type HardeningOptions,
+  type RunRecord,
+  type RunStore,
 } from '@ai-crew-suite/plugin-kernel-node';
 import type {
+  BaseCommandOptions,
   CommandContext,
   PackedRequestInput,
-} from './types/shared';
-import type {
+} from './types';
+import {
   StartRunBodySchema,
   StartRunParamsSchema,
 } from '../schemas';
@@ -51,19 +49,33 @@ interface StartRunRequestBody {
   readonly query?: unknown;
 }
 
+export interface StartRunCommandOptions extends BaseCommandOptions {
+  permissions: PermissionsService;
+  agentsMap: Map<string, unknown>;
+  consumeRateLimit: (agentId: string) => boolean;
+  runStore?: RunStore;
+  hardening?: HardeningOptions;
+}
+
 export class StartRunCommand extends BaseKernelCommand<
-StartRunValidatedInput,
-{ readonly runId: string; readonly status: string }
+  StartRunValidatedInput,
+  { readonly runId: string; readonly status: string }
 > {
-  public constructor(
-    private readonly permissions: PermissionsService,
-    private readonly agentsMap: Map<string, unknown>,
-    private readonly consumeRateLimit: (agentId: string) => boolean,
-    private readonly runStore?: RunStore,
-    private readonly hardening?: HardeningOptions,
-    credentials?: BackstageCredentials
-  ) {
-    super(credentials);
+  private readonly permissions: PermissionsService;
+  private readonly agentsMap: Map<string, unknown>;
+  private readonly consumeRateLimit: (agentId: string) => boolean;
+  private readonly runStore?: RunStore;
+  private readonly hardening?: HardeningOptions;
+
+  public constructor(options: StartRunCommandOptions) {
+    // Passes the full options object to the base class just like ApproveRunCommand
+    super(options);
+
+    this.permissions = options.permissions;
+    this.agentsMap = options.agentsMap;
+    this.consumeRateLimit = options.consumeRateLimit;
+    this.runStore = options.runStore;
+    this.hardening = options.hardening;
   }
 
   protected async authorize(input: StartRunValidatedInput, context: CommandContext): Promise<void> {

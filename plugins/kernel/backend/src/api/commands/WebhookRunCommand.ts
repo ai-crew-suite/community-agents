@@ -20,7 +20,6 @@ import {
   NotImplementedError,
 } from '@backstage/errors';
 import type {
-  BackstageCredentials,
   PermissionsService,
 } from '@backstage/backend-plugin-api';
 import type { ResourcePermission } from '@backstage/plugin-permission-common';
@@ -42,7 +41,7 @@ import {
 } from '../schemas';
 import { BaseKernelCommand } from './BaseKernelCommand';
 
-type WebhookRunValidatedInput = {
+export type WebhookRunValidatedInput = {
   readonly safeProviderName: string;
   readonly safeTriggerId: string;
   readonly query: string;
@@ -66,7 +65,6 @@ export class WebhookRunCommand extends BaseKernelCommand<
   WebhookRunValidatedInput,
   { readonly runId: string; readonly status: string }
 > {
-  // 1. Explicitly declare class properties to clear unused-var errors
   private readonly permissions: PermissionsService;
   private readonly agentRuntime?: WebhookRuntimeEngine;
   private readonly triggersList?: TriggerBinding[];
@@ -74,10 +72,8 @@ export class WebhookRunCommand extends BaseKernelCommand<
   private readonly hardeningOptions?: HardeningOptions;
 
   public constructor(options: WebhookRunCommandOptions) {
-    // 2. Pass the options object through to the base kernel constructor
     super(options);
 
-    // 3. Explicitly assign values from the unified parameter object
     this.permissions = options.permissions;
     this.agentRuntime = options.agentRuntime;
     this.triggersList = options.triggersList;

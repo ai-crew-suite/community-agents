@@ -16,8 +16,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InputError, NotAllowedError, NotImplementedError } from '@backstage/errors';
 import { BackstageCredentials } from '@backstage/backend-plugin-api';
-import { TriggerRunCommand, AgentRuntimeEngine } from '../TriggerRunCommand';
-import { CommandContext, PackedRequestInput } from '../types/shared';
+import { TriggerRunCommand } from '../TriggerRunCommand';
+import {
+  AgentRuntimeEngine,
+  CommandContext,
+  PackedRequestInput,
+} from '../types';
 import { TriggerBinding } from '@ai-crew-suite/plugin-kernel-node';
 
 describe('TriggerRunCommand - Automated Infrastructure Event Processing Gateway Suite', () => {
@@ -73,12 +77,26 @@ describe('TriggerRunCommand - Automated Infrastructure Event Processing Gateway 
   });
 
   it('should immediately raise a NotImplementedError if a core sub-system registry is missing', async () => {
-    const command = new TriggerRunCommand(mockPermissions, undefined, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new TriggerRunCommand({
+      permissions: mockPermissions,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
+
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(NotImplementedError);
   });
 
   it('should instantly throw an InputError if incoming parameters fail parsing criteria checks', async () => {
-    const command = new TriggerRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new TriggerRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     const brokenInput: PackedRequestInput = {
       ...defaultInput,
@@ -95,7 +113,14 @@ describe('TriggerRunCommand - Automated Infrastructure Event Processing Gateway 
   });
 
   it('should throw an explicit InputError if no configured trigger matches parameter keys', async () => {
-    const command = new TriggerRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new TriggerRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     const unmappedInput: PackedRequestInput = {
       ...defaultInput,
@@ -107,7 +132,14 @@ describe('TriggerRunCommand - Automated Infrastructure Event Processing Gateway 
   });
 
   it('should pass type validations, link the verified service principal, and yield an accepted receipt status', async () => {
-    const command = new TriggerRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new TriggerRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     const result = await command.execute(defaultInput, mockContext);
 
@@ -121,7 +153,14 @@ describe('TriggerRunCommand - Automated Infrastructure Event Processing Gateway 
   });
 
   it('should capture fatal async generator rejections inside the background closure and log deep stack traces', async () => {
-    const command = new TriggerRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new TriggerRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     vi.mocked(mockRuntime.run).mockImplementationOnce(() => {
       const complexError = new Error('Critical file partition missing or database transaction closed');
@@ -151,14 +190,28 @@ describe('TriggerRunCommand - Automated Infrastructure Event Processing Gateway 
 
   it('should catch a Ghost Agent reference, halt execution loops, and throw an InputError', async () => {
     const emptyAgentsMap = new Map<string, unknown>();
-    const command = new TriggerRunCommand(mockPermissions, mockRuntime, mockTriggersList, emptyAgentsMap, {}, mockCredentials);
+    const command = new TriggerRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: emptyAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(InputError);
     expect(mockRuntime.run).not.toHaveBeenCalled();
   });
 
   it('should safely intercept intermediate error tokens emitted inside the asynchronous event stream and log telemetry data', async () => {
-    const command = new TriggerRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new TriggerRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     vi.mocked(mockRuntime.run).mockImplementationOnce(async function* () {
       yield { type: 'step', data: { phase: 'enter' } };
@@ -189,7 +242,14 @@ describe('TriggerRunCommand - Automated Infrastructure Event Processing Gateway 
 
   it('should throw an explicit system exception and log an error metric if the permissions service response payload is completely empty', async () => {
     mockPermissions.authorize.mockResolvedValue([]);
-    const command = new TriggerRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new TriggerRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(
       'Internal authorization parsing failure encountered'
@@ -203,14 +263,28 @@ describe('TriggerRunCommand - Automated Infrastructure Event Processing Gateway 
 
   it('should reject requests with a NotAllowedError if the service identity is explicitly denied by RBAC profiles', async () => {
     mockPermissions.authorize.mockResolvedValue([{ result: 'DENY' }]);
-    const command = new TriggerRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new TriggerRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(NotAllowedError);
     expect(mockRuntime.run).not.toHaveBeenCalled();
   });
 
   it('should reject requests with an InputError if the query parameter consists entirely of empty whitespace characters', async () => {
-    const command = new TriggerRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new TriggerRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     const emptyQueryInput: PackedRequestInput = {
       ...defaultInput,
@@ -230,14 +304,14 @@ describe('TriggerRunCommand - Automated Infrastructure Event Processing Gateway 
       maxRetries: 5
     };
 
-    const command = new TriggerRunCommand(
-      mockPermissions,
-      mockRuntime,
-      mockTriggersList,
-      mockAgentsMap,
-      customHardening,
-      mockCredentials
-    );
+    const command = new TriggerRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: customHardening,
+      credentials: mockCredentials,
+    });
 
     const result = await command.execute(defaultInput, mockContext);
     expect(result.status).toBe('trigger_processing_dispatched');
@@ -256,7 +330,14 @@ describe('TriggerRunCommand - Automated Infrastructure Event Processing Gateway 
   });
 
   it('should handle un-iterable or corrupt stream instances inside the background enclosure without crashing the worker process thread', async () => {
-    const command = new TriggerRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new TriggerRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     // Simulate the execution engine returning an invalid, non-iterable null stream block payload
     vi.mocked(mockRuntime.run).mockReturnValueOnce(null as any);

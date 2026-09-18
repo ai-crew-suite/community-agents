@@ -16,8 +16,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InputError, NotAllowedError, NotImplementedError } from '@backstage/errors';
 import { BackstageCredentials } from '@backstage/backend-plugin-api';
-import { GetEmbeddingsCommand, RetrievalPipeline } from '../GetEmbeddingsCommand';
-import { CommandContext, PackedRequestInput } from '../types/shared';
+import type{ RetrievalPipeline } from '@ai-crew-suite/plugin-kernel-node';
+import type {
+  CommandContext,
+  PackedRequestInput,
+} from '../types';
+import { GetEmbeddingsCommand } from '../GetEmbeddingsCommand';
 
 describe('GetEmbeddingsCommand - Controlled Context Retrieval Boundary Suite', () => {
   let mockLogger: any;
@@ -66,12 +70,22 @@ describe('GetEmbeddingsCommand - Controlled Context Retrieval Boundary Suite', (
   });
 
   it('should immediately raise a NotImplementedError if the core RetrievalPipeline layer is missing', async () => {
-    const command = new GetEmbeddingsCommand(mockPermissions, undefined, {}, mockCredentials);
+    const command = new GetEmbeddingsCommand({
+      permissions: mockPermissions,
+      hardening: {},
+      credentials: mockCredentials,
+    });
+
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(NotImplementedError);
   });
 
   it('should immediately raise an InputError when the query parameter mapping fails Zod schema verification', async () => {
-    const command = new GetEmbeddingsCommand(mockPermissions, mockPipeline, {}, mockCredentials);
+    const command = new GetEmbeddingsCommand({
+      permissions: mockPermissions,
+      retrievalPipeline: mockPipeline,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const brokenInput: PackedRequestInput = {
       ...defaultInput,
@@ -91,7 +105,12 @@ describe('GetEmbeddingsCommand - Controlled Context Retrieval Boundary Suite', (
   });
 
   it('should forward parameters cleanly to the pipeline service and return context results on valid inputs', async () => {
-    const command = new GetEmbeddingsCommand(mockPermissions, mockPipeline, {}, mockCredentials);
+    const command = new GetEmbeddingsCommand({
+      permissions: mockPermissions,
+      retrievalPipeline: mockPipeline,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const result = await command.execute(defaultInput, mockContext);
 
@@ -112,7 +131,12 @@ describe('GetEmbeddingsCommand - Controlled Context Retrieval Boundary Suite', (
   });
 
   it('should catch async read anomalies, log context fields safely, and mask the public error exception', async () => {
-    const command = new GetEmbeddingsCommand(mockPermissions, mockPipeline, {}, mockCredentials);
+    const command = new GetEmbeddingsCommand({
+      permissions: mockPermissions,
+      retrievalPipeline: mockPipeline,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     vi.mocked(mockPipeline.retrieveAugmentationContext).mockRejectedValueOnce(
       new Error('Vector embedding index pointer corrupted')
@@ -136,7 +160,13 @@ describe('GetEmbeddingsCommand - Controlled Context Retrieval Boundary Suite', (
 
   it('should trigger a timeout rejection when the retrieval pipeline takes longer than configured hardening boundaries', async () => {
     const lowTimeoutHardening = { timeoutMs: 1 };
-    const command = new GetEmbeddingsCommand(mockPermissions, mockPipeline, lowTimeoutHardening, mockCredentials);
+
+    const command = new GetEmbeddingsCommand({
+      permissions: mockPermissions,
+      retrievalPipeline: mockPipeline,
+      hardening: lowTimeoutHardening,
+      credentials: mockCredentials,
+    });
 
     vi.mocked(mockPipeline.retrieveAugmentationContext).mockImplementationOnce(
       () => new Promise(resolve => setTimeout(resolve, 5000))
@@ -148,7 +178,12 @@ describe('GetEmbeddingsCommand - Controlled Context Retrieval Boundary Suite', (
   });
 
   it('should sanitize raw infrastructure exceptions to prevent data layout leakage', async () => {
-    const command = new GetEmbeddingsCommand(mockPermissions, mockPipeline, {}, mockCredentials);
+    const command = new GetEmbeddingsCommand({
+      permissions: mockPermissions,
+      retrievalPipeline: mockPipeline,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     vi.mocked(mockPipeline.retrieveAugmentationContext).mockRejectedValueOnce(
       new Error('FATAL: Internal PostgreSQL connection pooling slot exhaust limit reached [Cluster Topology: 10.0.1.5]')
@@ -163,7 +198,12 @@ describe('GetEmbeddingsCommand - Controlled Context Retrieval Boundary Suite', (
   });
 
   it('should successfully handle whitespace padding mutations on search queries without shifting index tracks', async () => {
-    const command = new GetEmbeddingsCommand(mockPermissions, mockPipeline, {}, mockCredentials);
+    const command = new GetEmbeddingsCommand({
+      permissions: mockPermissions,
+      retrievalPipeline: mockPipeline,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const trailingWhitespaceInput: PackedRequestInput = {
       ...defaultInput,
@@ -184,7 +224,13 @@ describe('GetEmbeddingsCommand - Controlled Context Retrieval Boundary Suite', (
 
   it('should throw an explicit system exception and log an error metric if the permissions service response payload is completely empty', async () => {
     mockPermissions.authorize.mockResolvedValue([]);
-    const command = new GetEmbeddingsCommand(mockPermissions, mockPipeline, {}, mockCredentials);
+
+    const command = new GetEmbeddingsCommand({
+      permissions: mockPermissions,
+      retrievalPipeline: mockPipeline,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(
       'Internal authorization parsing failure encountered'
@@ -198,14 +244,25 @@ describe('GetEmbeddingsCommand - Controlled Context Retrieval Boundary Suite', (
 
   it('should reject requests with a NotAllowedError if the user is explicitly denied by RBAC profiles', async () => {
     mockPermissions.authorize.mockResolvedValue([{ result: 'DENY' }]);
-    const command = new GetEmbeddingsCommand(mockPermissions, mockPipeline, {}, mockCredentials);
+
+    const command = new GetEmbeddingsCommand({
+      permissions: mockPermissions,
+      retrievalPipeline: mockPipeline,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(NotAllowedError);
     expect(mockPipeline.retrieveAugmentationContext).not.toHaveBeenCalled();
   });
 
   it('should cleanly reject query parameters containing adversarial array injections with an InputError', async () => {
-    const command = new GetEmbeddingsCommand(mockPermissions, mockPipeline, {}, mockCredentials);
+    const command = new GetEmbeddingsCommand({
+      permissions: mockPermissions,
+      retrievalPipeline: mockPipeline,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     const arrayQueryFuzzInput: PackedRequestInput = {
       ...defaultInput,
@@ -222,9 +279,15 @@ describe('GetEmbeddingsCommand - Controlled Context Retrieval Boundary Suite', (
   });
 
   it('should safely normalize telemetry logs even if the vector pipeline returns a null or corrupt structural payload result', async () => {
-    const command = new GetEmbeddingsCommand(mockPermissions, mockPipeline, {}, mockCredentials);
+    const command = new GetEmbeddingsCommand({
+      permissions: mockPermissions,
+      retrievalPipeline: mockPipeline,
+      hardening: {},
+      credentials: mockCredentials,
+    });
 
     // Simulate a database returning a corrupt null payload instance instead of an array
+    // @ts-expect-error: mocking a method to return null which does not match the expected type
     vi.mocked(mockPipeline.retrieveAugmentationContext).mockResolvedValueOnce(null);
 
     const result = await command.execute(defaultInput, mockContext);

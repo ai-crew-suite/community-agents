@@ -15,26 +15,8 @@
  */
 import type {
   BackstageCredentials,
-  PermissionsService
 } from '@backstage/backend-plugin-api';
 import type {
   AgentRunInput,
-  TriggerBinding,
-  ArtifactSink,
-  AuditLogSink,
-  AugmentationIndexer,
-  CheckpointStore,
-  HardeningOptions,
-  RunStore,
-  SessionStore,
-  ToolRegistry,
 } from '@ai-crew-suite/plugin-kernel-node';
-import type { AgentRuntime } from '../../../runtime/AgentRuntime';
 
-export interface BaseCommandOptions {
-  credentials?: BackstageCredentials;
-}
-
-export interface AgentRuntimeEngine {
-  run(input: AgentRunInput, context: unknown): any;
-}

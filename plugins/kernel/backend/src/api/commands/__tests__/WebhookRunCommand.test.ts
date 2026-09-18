@@ -16,10 +16,16 @@
 // plugins/kernel/backend/src/api/commands/__tests__/WebhookRunCommand.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InputError, NotAllowedError, NotImplementedError } from '@backstage/errors';
-import { BackstageCredentials } from '@backstage/backend-plugin-api';
-import { WebhookRunCommand, WebhookRuntimeEngine } from '../WebhookRunCommand';
-import { CommandContext, PackedRequestInput } from '../types/shared';
-import { TriggerBinding } from '@ai-crew-suite/plugin-kernel-node';
+import type { BackstageCredentials } from '@backstage/backend-plugin-api';
+import type {
+  TriggerBinding,
+  WebhookRuntimeEngine,
+} from '@ai-crew-suite/plugin-kernel-node';
+import { WebhookRunCommand } from '../WebhookRunCommand';
+import {
+  CommandContext,
+  PackedRequestInput,
+} from '../types';
 
 describe('WebhookRunCommand - Controlled Third-Party Webhook Ingestion Boundary Suite', () => {
   let mockLogger: any;
@@ -75,12 +81,26 @@ describe('WebhookRunCommand - Controlled Third-Party Webhook Ingestion Boundary 
   });
 
   it('should immediately raise a NotImplementedError if a core sub-system registry dependency is missing', async () => {
-    const command = new WebhookRunCommand(mockPermissions, undefined, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new WebhookRunCommand({
+      permissions: mockPermissions,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
+
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(NotImplementedError);
   });
 
   it('should immediately raise an InputError if validation fields fail Zod parsing contracts', async () => {
-    const command = new WebhookRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new WebhookRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     const brokenInput: PackedRequestInput = {
       ...defaultInput,
@@ -96,7 +116,14 @@ describe('WebhookRunCommand - Controlled Third-Party Webhook Ingestion Boundary 
   });
 
   it('should throw an explicit InputError if no active rule maps to provider parameter combinations', async () => {
-    const command = new WebhookRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new WebhookRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     const unmappedInput: PackedRequestInput = {
       ...defaultInput,
@@ -108,14 +135,28 @@ describe('WebhookRunCommand - Controlled Third-Party Webhook Ingestion Boundary 
 
   it('should throw an InputError and bypass execution loops when encountering a Ghost Agent mapping reference', async () => {
     const emptyAgentsMap = new Map<string, unknown>();
-    const command = new WebhookRunCommand(mockPermissions, mockRuntime, mockTriggersList, emptyAgentsMap, {}, mockCredentials);
+    const command = new WebhookRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: emptyAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(InputError);
     expect(mockRuntime.run).not.toHaveBeenCalled();
   });
 
   it('should pass parameters forward, verify identity bounds, and capture async done event streams completely', async () => {
-    const command = new WebhookRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new WebhookRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     const result = await command.execute(defaultInput, mockContext);
 
@@ -137,7 +178,14 @@ describe('WebhookRunCommand - Controlled Third-Party Webhook Ingestion Boundary 
   });
 
   it('should successfully strip out special characters from injection-prone webhook parameters before matching bindings', async () => {
-    const command = new WebhookRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new WebhookRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     const maliciousInput: PackedRequestInput = {
       ...defaultInput,
@@ -158,7 +206,14 @@ describe('WebhookRunCommand - Controlled Third-Party Webhook Ingestion Boundary 
   });
 
   it('should fall back to calculate request size from the body literal when Content-Length headers are completely missing', async () => {
-    const command = new WebhookRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new WebhookRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     const bareInput: PackedRequestInput = {
       ...defaultInput,
@@ -177,7 +232,14 @@ describe('WebhookRunCommand - Controlled Third-Party Webhook Ingestion Boundary 
   });
 
   it('should deploy defensive default objects when the background loop handles a null error token exception', async () => {
-    const command = new WebhookRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new WebhookRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     // Simulate an immediate async loop crash by throwing a raw null primitive
     vi.mocked(mockRuntime.run).mockImplementationOnce(() => {
@@ -199,7 +261,14 @@ describe('WebhookRunCommand - Controlled Third-Party Webhook Ingestion Boundary 
   });
 
   it('should successfully handle query payloads containing whitespace padding mutations without shifting mapping tracks', async () => {
-    const command = new WebhookRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new WebhookRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     const paddedInput: PackedRequestInput = {
       ...defaultInput,
@@ -223,7 +292,14 @@ describe('WebhookRunCommand - Controlled Third-Party Webhook Ingestion Boundary 
 
   it('should throw an explicit system exception and log an error metric if the permissions service response payload is completely empty', async () => {
     mockPermissions.authorize.mockResolvedValue([]);
-    const command = new WebhookRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new WebhookRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(
       'Internal authorization parsing failure encountered'
@@ -237,14 +313,28 @@ describe('WebhookRunCommand - Controlled Third-Party Webhook Ingestion Boundary 
 
   it('should reject requests with a NotAllowedError if the webhook integration target is explicitly denied by RBAC profiles', async () => {
     mockPermissions.authorize.mockResolvedValue([{ result: 'DENY' }]);
-    const command = new WebhookRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new WebhookRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     await expect(command.execute(defaultInput, mockContext)).rejects.toThrow(NotAllowedError);
     expect(mockRuntime.run).not.toHaveBeenCalled();
   });
 
   it('should safely fall back to calculating body length if the Content-Length header contains an illegal non-numeric string', async () => {
-    const command = new WebhookRunCommand(mockPermissions, mockRuntime, mockTriggersList, mockAgentsMap, {}, mockCredentials);
+    const command = new WebhookRunCommand({
+      permissions: mockPermissions,
+      agentRuntime: mockRuntime,
+      triggersList: mockTriggersList,
+      agentsMap: mockAgentsMap,
+      hardeningOptions: {},
+      credentials: mockCredentials,
+    });
 
     const corruptedHeaderInput: PackedRequestInput = {
       ...defaultInput,
