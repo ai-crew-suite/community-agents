@@ -55,7 +55,7 @@
     "@ai-crew-suite/plugin-kernel-node": "workspace:^",
     "@backstage/backend-plugin-api": "backstage:^",
     "@backstage/config": "backstage:^",
-    "ioredis": "^5.11.1",
+    "ioredis": "^6.0.0",
     "knex": "catalog:knex"
   },
   "devDependencies": {
