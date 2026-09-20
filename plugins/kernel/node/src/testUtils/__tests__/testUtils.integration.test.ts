@@ -29,9 +29,13 @@ describe('Kernel Test Utilities Integration Suite', () => {
   class MockSearchTool implements Tool {
     public readonly id = 'spotify-catalog-service';
     public readonly providerId = 'spotify-catalog-service';
+    public readonly category = 'catalog' as const;
 
-    async invoke(args: { query: string }) {
-      if (!args?.query) return { status: 'limited', reason: 'empty_query' };
+    async invoke(args: unknown) {
+      const query = typeof args === 'object' && args !== null && 'query' in args
+        ? args.query
+        : undefined;
+      if (typeof query !== 'string' || !query) return { status: 'limited', reason: 'empty_query' };
       return { matches: ['track_1', 'track_2'] };
     }
   }

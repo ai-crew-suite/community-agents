@@ -17,7 +17,6 @@ import express from 'express';
 import Router from 'express-promise-router';
 import { MiddlewareFactory } from '@backstage/backend-defaults/rootHttpRouter';
 import { LoggerService, HttpAuthService, PermissionsService, RootConfigService } from '@backstage/backend-plugin-api';
-import { adaptCommand } from './adaptCommand';
 import {
   RunStore,
   ToolRegistry,
@@ -39,6 +38,7 @@ import {
   TriggerRunCommand,
   WebhookRunCommand,
 } from '../commands';
+import { adaptCommand } from './adaptCommand';
 import type { AgentRuntime } from '../../runtime/AgentRuntime';
 
 export type RouterOptions = {

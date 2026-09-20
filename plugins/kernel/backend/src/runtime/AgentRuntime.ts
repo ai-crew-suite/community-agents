@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright 2024 Larder Software Limited
  * Copyright 2026 The AI Crew Suite Authors
  *
@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 import { trace, type Span } from '@opentelemetry/api';
 import type {
   AgentDefinition,

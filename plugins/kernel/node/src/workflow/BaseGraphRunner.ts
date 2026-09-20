@@ -35,7 +35,7 @@ export abstract class BaseGraphRunner<TState = unknown, TEvent = unknown> {
       runId: input.runId,
       agentId: input.agentId,
       identity: context.identity,
-      timeoutBoundaryMs: context.hardening.timeoutMs,
+      timeoutBoundaryMs: context.hardening?.timeoutMs,
     });
 
     // 2. Setup the isolated graph execution state context
@@ -44,14 +44,14 @@ export abstract class BaseGraphRunner<TState = unknown, TEvent = unknown> {
     try {
       // 3. Delegate to the concrete subclass to execute its specific step loop actions
       const stream = this.runGraphStream(input, graphState, context);
-      
+
       for await (const event of stream) {
         // Yield events (steps, token chunks, error flags) directly up to the HTTP or automation boundary
         yield event;
       }
     } catch (error: unknown) {
       const exception = error instanceof Error ? error : new Error(String(error));
-      
+
       context.logger.error('Fatal execution exception caught within graph processing cycle', {
         runId: input.runId,
         agentId: input.agentId,

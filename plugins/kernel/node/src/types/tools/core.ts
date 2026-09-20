@@ -23,6 +23,22 @@ import { AugmentationIndexer, RetrievalPipeline } from '../pipelines';
  */
 
 /**
+ * Valid domain categorization buckets organizing specialized capability
+ * clusters. Matches your monorepo file structure precisely.
+ */
+export type ToolCategory =
+  | 'cloud-providers'
+  | 'catalog'
+  | 'communication'
+  | 'compliance'
+  | 'incident-management'
+  | 'kubernetes'
+  | 'observability'
+  | 'project-management'
+  | 'quality-scorecards'
+  | 'vcs';
+
+/**
  * Executable tool that can be invoked by an agent or orchestration pipeline.
  */
 export interface Tool<A = unknown, R = unknown> {

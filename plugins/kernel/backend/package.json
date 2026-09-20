@@ -46,7 +46,7 @@
     "build": "yarn sync-config-types && crew build",
     "clean": "crew clean",
     "lint": "yarn sync-config-types && crew lint",
-    "sync-config-types": "node scripts/sync-config-types.js",
+    "sync-config-types": "node scripts/sync-config-types.mjs",
     "test:e2e": "yarn sync-config-types && crew test:e2e",
     "test:unit": "yarn sync-config-types && crew test:unit",
     "test:unit:coverage": "yarn sync-config-types && crew test:unit:coverage",

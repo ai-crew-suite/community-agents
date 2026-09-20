@@ -17,7 +17,7 @@ import type {
   CatalogEntityRelation,
   CatalogEntitySummary,
   CatalogIntegrationReferences,
-} from '../../types/catalog';
+} from '../../kernel/node/src/types/catalog';
 
 /**
  * Minimal structural view of a raw catalog entity that the pure mapping

@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright 2026 The AI Crew Suite Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import type { AgentDefinition } from '@ai-crew-suite/plugin-kernel-node';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { AgentDefinition } from '@ai-crew-suite/plugin-kernel-node';
 import { NodeError, type Redactor } from '@ai-crew-suite/plugin-kernel-node';
 import type { EventMapper } from './EventMapper';
 

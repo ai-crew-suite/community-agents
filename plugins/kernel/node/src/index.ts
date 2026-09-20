@@ -22,7 +22,7 @@ export * from './permissions';
 export * from './types';
 
 // 3. Stateful Runtime & Execution Services
-export * from './service/catalog';
+export * from '../../../tools/catalog';
 export * from './service/redaction';
 export * from './workflow';
 

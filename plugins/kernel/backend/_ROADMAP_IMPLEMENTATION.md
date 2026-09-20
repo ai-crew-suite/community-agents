@@ -96,3 +96,53 @@ return res.end();
 ```
 
 In a fully realized architecture, `startRun` shouldn't just end the response immediately; it needs to **actually kick off the agent workflow execution thread**. To do that, the code will eventually call `ctx.runtime.execute(...)` or `ctx.runtime.stream(...)` using the tools registered in the `toolRegistry`. Once you hook the runtime engine into that action handler, those parameters will instantly become active.
+
+## Type Errors
+
+The 45 errors reduce to a few root causes:
+
+1. `Command` constructor contract changed, but callers were not migrated
+
+- `BaseKernelCommand` now expects `BaseCommandOptions`, an object containing credentials.
+- Tests still pass undefined or raw `BackstageCredentials`.
+- `adaptCommand` expects `{ commandDeps: ... }`, but most router registrations still pass dependency objects directly.
+- This is the highest-leverage area: settle one constructor/configuration shape, then migrate tests and router bindings consistently.
+
+2. The router and service contracts are out of sync
+
+- `RouterOptions` requires triggers, but `plugin.ts` does not pass it.
+- `AiBackendServices` does not declare stores that `factory.ts` returns and `plugin.ts` consumes.
+- `Router` calls use names such as `agents`, `agentRuntime`, and `permissions`, while command-specific option types expect different fields.
+This indicates the service graph refactor is incomplete, not that individual properties should be cast away.
+
+3. Required `Tool.category` was introduced without migrating fixtures
+
+- `ToolCategory` already includes catalog, and the planning notes support category grouping.
+- The test tools need intentional categories based on their domain: GitHub/Jira/project tooling, Slack communication, PagerDuty incident management, Kubernetes, and so on.
+
+The retrieval fixture should likely use catalog or a separate retrieval/data-access category, depending on the intended taxonomy. We should not make category optional just to quiet these errors.
+
+4. Some failures are stale references or missing implementation files
+
+- `../api/controller` is imported but no matching source file exists.
+- `ConfigurableRedactorAdapter` exists under `src/service`, but  `runtime/index.ts` imports it from the wrong directory.
+
+These should be fixed as path/ownership issues, not suppressed.
+
+5. Configuration types are also mid-migration
+
+- `hardening` can be `null` from Backstage config but command options accept only `HardeningOptions` | `undefined`.
+- `maxNodeDurationMs` is used but absent from the declared hardening config type.
+- The unused `@ts-expect-error` means a previous expected failure is now valid and the test assertion needs review.
+
+Recommended order:
+
+1. Establish the canonical command options and adapter shape.
+2. Align command implementations, `adaptCommand`, router registrations, and command tests.
+3. Align `AiBackendServiceOptions`, `AiBackendServices`, `RouterOptions`, and `plugin.ts`.
+4. Resolve missing/mislocated modules.
+5. Migrate tool fixtures with deliberate categories and correct JSON logging types.
+6. Fix configuration nullability and hardening fields.
+7. Re-run typecheck, then address remaining isolated test expectations.
+
+The important constraint is that we should not add broad casts, make required properties optional, or remove the new Tool.category requirement. Those would conceal the unfinished migration and leave the runtime contracts inconsistent.
